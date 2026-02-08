@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSCUP Newsletter Admin - 訂閱者</title>
+    <style>
+        body { font-family: sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 20px; }
+        nav { display: flex; gap: 16px; margin-bottom: 20px; }
+        nav a { color: #4a90d9; text-decoration: none; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f5f5f5; }
+        .actions { display: flex; gap: 4px; }
+        .actions form { margin: 0; }
+        .actions button { padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; color: white; font-size: 12px; }
+        .btn-toggle { background: #ff9800; }
+        .btn-resend { background: #4a90d9; }
+        .pagination { display: flex; gap: 8px; margin: 16px 0; }
+        .pagination a { color: #4a90d9; }
+        .tools { display: flex; gap: 12px; margin: 16px 0; align-items: center; }
+        .search-form { display: flex; gap: 8px; }
+        .search-form input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+        .search-form button { padding: 6px 12px; background: #4a90d9; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <nav>
+        <strong>COSCUP Newsletter Admin</strong>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/subscribers">訂閱者</a>
+        <a href="/admin/stats">統計</a>
+    </nav>
+    <h1>訂閱者管理 ({{ total }})</h1>
+    <div class="tools">
+        <form class="search-form" method="GET" action="/admin/subscribers">
+            <input type="text" name="search" value="{{ search }}" placeholder="搜尋 email 或名稱">
+            <button type="submit">搜尋</button>
+        </form>
+        <a href="/admin/subscribers/export">匯出 CSV</a>
+        <form method="POST" action="/admin/subscribers/import" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;">
+            <input type="file" name="file" accept=".csv" required>
+            <button type="submit" style="padding:6px 12px;background:#4caf50;color:white;border:none;border-radius:4px;cursor:pointer;">匯入</button>
+        </form>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>名稱</th>
+                <th>狀態</th>
+                <th>已驗證</th>
+                <th>Ucode</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in subscribers %}
+            <tr>
+                <td>{{ s.email }}</td>
+                <td>{{ s.name }}</td>
+                <td>{% if s.status %}有效{% else %}停用{% endif %}</td>
+                <td>{% if s.verified_email %}是{% else %}否{% endif %}</td>
+                <td>{{ s.ucode }}</td>
+                <td class="actions">
+                    <form method="POST" action="/admin/subscribers/{{ s.id }}/toggle">
+                        <button type="submit" class="btn-toggle">切換</button>
+                    </form>
+                    <form method="POST" action="/admin/subscribers/{{ s.id }}/resend">
+                        <button type="submit" class="btn-resend">重發驗證</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/admin/subscribers?page={{ page - 1 }}&search={{ search }}">&laquo; 上一頁</a>
+        {% endif %}
+        <span>第 {{ page }} / {{ total_pages }} 頁</span>
+        {% if page < total_pages %}
+        <a href="/admin/subscribers?page={{ page + 1 }}&search={{ search }}">下一頁 &raquo;</a>
+        {% endif %}
+    </div>
+</body>
+</html>

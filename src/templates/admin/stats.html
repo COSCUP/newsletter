@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSCUP Newsletter Admin - 統計</title>
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; }
+        nav { display: flex; gap: 16px; margin-bottom: 20px; }
+        nav a { color: #4a90d9; text-decoration: none; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <nav>
+        <strong>COSCUP Newsletter Admin</strong>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/subscribers">訂閱者</a>
+        <a href="/admin/stats">統計</a>
+    </nav>
+    <h1>追蹤統計</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Topic</th>
+                <th>事件類型</th>
+                <th>次數</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in stats %}
+            <tr>
+                <td>{{ s.topic }}</td>
+                <td>{{ s.event_type }}</td>
+                <td>{{ s.count }}</td>
+            </tr>
+            {% endfor %}
+            {% if stats | length == 0 %}
+            <tr>
+                <td colspan="3" style="text-align:center;color:#999;">尚無追蹤資料</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</body>
+</html>
