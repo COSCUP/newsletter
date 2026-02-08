@@ -1,0 +1,24 @@
+# Rust
+/target
+**/*.rs.bk
+*.pdb
+
+# Environment
+.env
+
+# Data
+example.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml

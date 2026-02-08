@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2>COSCUP Newsletter - Email 驗證</h2>
+    <p>{{ name }}，您好！</p>
+    <p>感謝您訂閱 COSCUP Newsletter。請點擊下方連結以驗證您的 Email：</p>
+    <p><a href="{{ verify_url }}" style="display:inline-block;padding:10px 20px;background:#4a90d9;color:white;text-decoration:none;border-radius:4px;">驗證 Email</a></p>
+    <p>或複製此連結到瀏覽器：<br>{{ verify_url }}</p>
+    <p>此連結將於 24 小時後失效。</p>
+    <hr>
+    <p style="color:#999;font-size:12px;">COSCUP Newsletter</p>
+</body>
+</html>
