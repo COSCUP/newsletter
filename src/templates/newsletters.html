@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}電子報歷史 — COSCUP Newsletter{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:680px;">
+    <h2>電子報歷史</h2>
+    {% if newsletters | length == 0 %}
+        <p style="color:#999;text-align:center;padding:40px 0;">目前尚無已寄送的電子報。</p>
+    {% else %}
+        <ul style="list-style:none;padding:0;">
+        {% for n in newsletters %}
+            <li style="border-bottom:1px solid #eee;padding:14px 0;">
+                <a href="/newsletters/{{ n.slug }}" style="font-size:16px;font-weight:500;text-decoration:none;">
+                    {{ n.title }}
+                </a>
+                <span style="display:block;font-size:13px;color:#999;margin-top:4px;">{{ n.sent_at }}</span>
+            </li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endblock %}

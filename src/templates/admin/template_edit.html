@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSCUP Newsletter Admin - {% if template %}編輯模板{% else %}建立模板{% endif %}</title>
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; }
+        nav { display: flex; gap: 16px; margin-bottom: 20px; align-items: center; }
+        nav a { color: #3b9838; text-decoration: none; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 6px; }
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;
+            font-size: 14px; font-family: inherit; box-sizing: border-box;
+        }
+        .form-group textarea { min-height: 400px; resize: vertical; font-family: 'Courier New', monospace; }
+        .btn { display: inline-block; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; color: white; text-decoration: none; font-size: 14px; }
+        .btn-primary { background: #3b9838; }
+        .btn-primary:hover { background: #338832; }
+        .btn-secondary { background: #718096; }
+        .btn-secondary:hover { background: #4a5568; }
+        .btn-danger { background: #e53e3e; }
+        .btn-danger:hover { background: #c53030; }
+        .actions { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+        .info-box { padding: 12px 16px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 16px; font-size: 13px; }
+        .info-box code { background: #edf2f7; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <strong>COSCUP Newsletter Admin</strong>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/subscribers">訂閱者</a>
+        <a href="/admin/newsletters">電子報</a>
+        <a href="/admin/templates">模板</a>
+        <a href="/admin/stats">統計</a>
+        <a href="/admin/admins">管理員</a>
+        <a href="/admin/audit-log">操作記錄</a>
+        <form method="POST" action="/admin/logout" style="margin-left:auto;">
+            <button type="submit" style="background:none;border:none;color:#d9534f;cursor:pointer;">登出 ({{ admin_email }})</button>
+        </form>
+    </nav>
+
+    <h1>{% if template %}編輯模板{% else %}建立模板{% endif %}</h1>
+
+    <div class="info-box">
+        <strong>可用變數：</strong>
+        <code>{{ '{{' }} content {{ '}}' }}</code> — 電子報內容（Markdown 渲染後的 HTML）、
+        <code>{{ '{{' }} title {{ '}}' }}</code> — 電子報標題、
+        <code>{{ '{{' }} tracking_pixel {{ '}}' }}</code> — 追蹤像素、
+        <code>{{ '{{' }} unsubscribe_url {{ '}}' }}</code> — 取消訂閱連結、
+        <code>{{ '{{' }} web_url {{ '}}' }}</code> — 在瀏覽器中查看的公開網址、
+        <code>{{ '{{' }} base_url {{ '}}' }}</code> — 網站根網址（如 https://newsletter.coscup.org）
+    </div>
+
+    <form method="POST" action="{% if template %}/admin/templates/{{ template.id }}{% else %}/admin/templates/new{% endif %}">
+        <div class="form-group">
+            <label for="name">名稱</label>
+            <input type="text" id="name" name="name" value="{% if template %}{{ template.name }}{% endif %}" required>
+        </div>
+        <div class="form-group">
+            <label for="slug">Slug（小寫英數 + 連字號）</label>
+            <input type="text" id="slug" name="slug" value="{% if template %}{{ template.slug }}{% endif %}" required
+                pattern="[a-z0-9\-]+" title="Only lowercase letters, numbers, and hyphens">
+        </div>
+        <div class="form-group">
+            <label for="description">描述</label>
+            <input type="text" id="description" name="description" value="{% if template %}{{ template.description }}{% endif %}">
+        </div>
+        <div class="form-group">
+            <label for="html_body">HTML 內容</label>
+            <textarea id="html_body" name="html_body">{% if template %}{{ template.html_body }}{% endif %}</textarea>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">儲存</button>
+            <a href="/admin/templates" class="btn btn-secondary">返回列表</a>
+            {% if template %}
+            <a href="/admin/templates/{{ template.id }}/preview" class="btn btn-secondary">預覽</a>
+            <form method="POST" action="/admin/templates/{{ template.id }}/duplicate" style="display:inline;">
+                <button type="submit" class="btn btn-secondary">複製</button>
+            </form>
+            <form method="POST" action="/admin/templates/{{ template.id }}/delete" style="display:inline;"
+                onsubmit="return confirm('確定要刪除此模板？');">
+                <button type="submit" class="btn btn-danger">刪除</button>
+            </form>
+            {% endif %}
+        </div>
+    </form>
+</body>
+</html>

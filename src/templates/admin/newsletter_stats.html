@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSCUP Newsletter Admin - 統計</title>
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; }
+        nav { display: flex; gap: 16px; margin-bottom: 20px; align-items: center; }
+        nav a { color: #3b9838; text-decoration: none; }
+        .stats-cards { display: flex; gap: 16px; margin: 20px 0; flex-wrap: wrap; }
+        .stat-card { padding: 20px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; flex: 1; min-width: 100px; text-align: center; }
+        .stat-card h2 { margin: 0; font-size: 2em; color: #333; }
+        .stat-card p { margin: 4px 0 0; color: #666; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f5f5f5; }
+        .btn { display: inline-block; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; text-decoration: none; font-size: 14px; }
+        .btn-secondary { background: #718096; }
+    </style>
+</head>
+<body>
+    <nav>
+        <strong>COSCUP Newsletter Admin</strong>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/subscribers">訂閱者</a>
+        <a href="/admin/newsletters">電子報</a>
+        <a href="/admin/templates">模板</a>
+        <a href="/admin/stats">統計</a>
+        <a href="/admin/admins">管理員</a>
+        <a href="/admin/audit-log">操作記錄</a>
+        <form method="POST" action="/admin/logout" style="margin-left:auto;">
+            <button type="submit" style="background:none;border:none;color:#d9534f;cursor:pointer;">登出 ({{ admin_email }})</button>
+        </form>
+    </nav>
+
+    <h1>{{ title }} — 統計</h1>
+
+    <div style="margin-bottom:16px;">
+        <a href="/admin/newsletters/{{ newsletter_id }}" class="btn btn-secondary">返回</a>
+    </div>
+
+    <div class="stats-cards">
+        <div class="stat-card">
+            <h2>{{ sent_count }}</h2>
+            <p>已發送</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ unique_opens }}</h2>
+            <p>不重複開信</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ open_rate }}</h2>
+            <p>開信率</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ total_clicks }}</h2>
+            <p>總點擊</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ unique_clicks }}</h2>
+            <p>不重複點擊</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ failed_count }}</h2>
+            <p>失敗</p>
+        </div>
+        <div class="stat-card">
+            <h2>{{ unsubscribe_count }}</h2>
+            <p>退訂</p>
+        </div>
+    </div>
+
+    <h2>連結點擊明細</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>連結文字</th>
+                <th>URL</th>
+                <th>點擊數</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for link in links %}
+            <tr>
+                <td>{{ link.text }}</td>
+                <td style="word-break:break-all;">{{ link.url }}</td>
+                <td>{{ link.clicks }}</td>
+            </tr>
+            {% endfor %}
+            {% if links | length == 0 %}
+            <tr>
+                <td colspan="3" style="text-align:center;color:#999;">尚無點擊資料</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</body>
+</html>

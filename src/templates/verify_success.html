@@ -1,23 +1,18 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COSCUP Newsletter</title>
-    <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
-        .message { padding: 20px; background: #e8f5e9; border-radius: 4px; margin: 20px 0; }
-        a { color: #4a90d9; }
-    </style>
-</head>
-<body>
-    <h1>COSCUP Newsletter</h1>
-    <div class="message">
+{% extends "base.html" %}
+
+{% block title %}COSCUP Newsletter{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Email 驗證</h2>
+    <div class="alert alert-success">
         <p>{{ message | default(value="") }}</p>
     </div>
     {% if manage_url %}
-    <p>您的管理頁面連結：<a href="{{ manage_url }}">{{ manage_url }}</a></p>
-    <p>請妥善保存此連結，它是您管理訂閱的唯一方式。</p>
+    <div class="info-block">
+        <p><strong>您的管理頁面連結：</strong></p>
+        <p style="word-break:break-all;"><a href="{{ manage_url }}">{{ manage_url }}</a></p>
+    </div>
     {% endif %}
-</body>
-</html>
+</div>
+{% endblock %}

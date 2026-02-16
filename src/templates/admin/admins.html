@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSCUP Newsletter Admin - 管理員</title>
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; }
+        nav { display: flex; gap: 16px; margin-bottom: 20px; align-items: center; }
+        nav a { color: #4a90d9; text-decoration: none; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f5f5f5; }
+        .add-form { display: flex; gap: 8px; margin: 16px 0; align-items: center; }
+        .add-form input { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+        .add-form button { padding: 6px 12px; background: #3b9838; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-remove { padding: 4px 8px; background: #d9534f; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <strong>COSCUP Newsletter Admin</strong>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/subscribers">訂閱者</a>
+        <a href="/admin/newsletters">電子報</a>
+        <a href="/admin/templates">模板</a>
+        <a href="/admin/stats">統計</a>
+        <a href="/admin/admins">管理員</a>
+        <a href="/admin/audit-log">操作記錄</a>
+        <form method="POST" action="/admin/logout" style="margin-left:auto;">
+            <button type="submit" style="background:none;border:none;color:#d9534f;cursor:pointer;">登出 ({{ admin_email }})</button>
+        </form>
+    </nav>
+
+    <h1>管理員</h1>
+
+    <form class="add-form" method="POST" action="/admin/admins/add">
+        <input type="email" name="email" placeholder="新增管理員 Email" required>
+        <button type="submit">新增</button>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>新增者</th>
+                <th>建立時間</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for admin in admins %}
+            <tr>
+                <td>{{ admin.email }}</td>
+                <td>{{ admin.added_by }}</td>
+                <td>{{ admin.created_at }}</td>
+                <td>
+                    {% if admin.email != admin_email and admin_count > 1 %}
+                    <form method="POST" action="/admin/admins/{{ admin.id }}/remove" style="display:inline;" onsubmit="return confirm('確定要移除管理員 {{ admin.email }}？');">
+                        <button type="submit" class="btn-remove">移除</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

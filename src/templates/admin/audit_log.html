@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSCUP Newsletter Admin - 操作記錄</title>
+    <style>
+        body { font-family: sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 20px; }
+        nav { display: flex; gap: 16px; margin-bottom: 20px; align-items: center; }
+        nav a { color: #4a90d9; text-decoration: none; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f5f5f5; }
+        td.details { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #666; }
+        .filter-form { display: flex; gap: 8px; margin: 16px 0; align-items: center; }
+        .filter-form select { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+        .filter-form button { padding: 6px 12px; background: #4a90d9; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .pagination { display: flex; gap: 8px; margin: 16px 0; }
+        .pagination a { color: #4a90d9; }
+    </style>
+</head>
+<body>
+    <nav>
+        <strong>COSCUP Newsletter Admin</strong>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/subscribers">訂閱者</a>
+        <a href="/admin/newsletters">電子報</a>
+        <a href="/admin/templates">模板</a>
+        <a href="/admin/stats">統計</a>
+        <a href="/admin/admins">管理員</a>
+        <a href="/admin/audit-log">操作記錄</a>
+        <form method="POST" action="/admin/logout" style="margin-left:auto;">
+            <button type="submit" style="background:none;border:none;color:#d9534f;cursor:pointer;">登出 ({{ admin_email }})</button>
+        </form>
+    </nav>
+
+    <h1>操作記錄</h1>
+
+    <form class="filter-form" method="GET" action="/admin/audit-log">
+        <label>篩選操作：</label>
+        <select name="action">
+            <option value="">全部</option>
+            <option value="admin.login" {% if action_filter == "admin.login" %}selected{% endif %}>admin.login</option>
+            <option value="admin.logout" {% if action_filter == "admin.logout" %}selected{% endif %}>admin.logout</option>
+            <option value="admin.add" {% if action_filter == "admin.add" %}selected{% endif %}>admin.add</option>
+            <option value="admin.remove" {% if action_filter == "admin.remove" %}selected{% endif %}>admin.remove</option>
+            <option value="subscriber.toggle" {% if action_filter == "subscriber.toggle" %}selected{% endif %}>subscriber.toggle</option>
+            <option value="subscriber.resend" {% if action_filter == "subscriber.resend" %}selected{% endif %}>subscriber.resend</option>
+            <option value="subscriber.import" {% if action_filter == "subscriber.import" %}selected{% endif %}>subscriber.import</option>
+            <option value="newsletter.create" {% if action_filter == "newsletter.create" %}selected{% endif %}>newsletter.create</option>
+            <option value="newsletter.update" {% if action_filter == "newsletter.update" %}selected{% endif %}>newsletter.update</option>
+            <option value="newsletter.send" {% if action_filter == "newsletter.send" %}selected{% endif %}>newsletter.send</option>
+            <option value="newsletter.schedule" {% if action_filter == "newsletter.schedule" %}selected{% endif %}>newsletter.schedule</option>
+            <option value="newsletter.cancel" {% if action_filter == "newsletter.cancel" %}selected{% endif %}>newsletter.cancel</option>
+            <option value="newsletter.delete" {% if action_filter == "newsletter.delete" %}selected{% endif %}>newsletter.delete</option>
+            <option value="template.create" {% if action_filter == "template.create" %}selected{% endif %}>template.create</option>
+            <option value="template.update" {% if action_filter == "template.update" %}selected{% endif %}>template.update</option>
+            <option value="template.delete" {% if action_filter == "template.delete" %}selected{% endif %}>template.delete</option>
+            <option value="template.duplicate" {% if action_filter == "template.duplicate" %}selected{% endif %}>template.duplicate</option>
+        </select>
+        <button type="submit">篩選</button>
+    </form>
+
+    <p>共 {{ total }} 筆記錄</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>時間</th>
+                <th>管理員</th>
+                <th>操作</th>
+                <th>詳情</th>
+                <th>IP</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.created_at }}</td>
+                <td>{{ log.admin_email }}</td>
+                <td>{{ log.action }}</td>
+                <td class="details" title="{{ log.details }}">{{ log.details }}</td>
+                <td>{{ log.ip_address }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+            <a href="/admin/audit-log?page={{ page - 1 }}{% if action_filter %}&action={{ action_filter }}{% endif %}">« 上一頁</a>
+        {% endif %}
+        <span>第 {{ page }} / {{ total_pages }} 頁</span>
+        {% if page < total_pages %}
+            <a href="/admin/audit-log?page={{ page + 1 }}{% if action_filter %}&action={{ action_filter }}{% endif %}">下一頁 »</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSCUP Newsletter Admin - {% if newsletter %}編輯電子報{% else %}建立電子報{% endif %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; }
+        nav { display: flex; gap: 16px; margin-bottom: 20px; align-items: center; }
+        nav a { color: #3b9838; text-decoration: none; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 6px; }
+        .form-group input[type="text"],
+        .form-group select,
+        .form-group textarea,
+        .form-group input[type="datetime-local"] {
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;
+            font-size: 14px; font-family: inherit;
+        }
+        .form-group textarea { min-height: 400px; resize: vertical; font-family: 'Courier New', monospace; }
+        .btn { display: inline-block; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; color: white; text-decoration: none; font-size: 14px; }
+        .btn-primary { background: #3b9838; }
+        .btn-primary:hover { background: #338832; }
+        .btn-secondary { background: #718096; }
+        .btn-secondary:hover { background: #4a5568; }
+        .btn-danger { background: #e53e3e; }
+        .btn-danger:hover { background: #c53030; }
+        .btn-warning { background: #dd6b20; }
+        .btn-warning:hover { background: #c05621; }
+        .actions { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+        .status-info { padding: 12px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 16px; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-draft { background: #e2e8f0; color: #4a5568; }
+        .status-scheduled { background: #bee3f8; color: #2b6cb0; }
+        .status-sending { background: #fefcbf; color: #975a16; }
+        .status-sent { background: #c6f6d5; color: #276749; }
+        .status-paused { background: #fed7d7; color: #9b2c2c; }
+        .status-failed { background: #fed7d7; color: #9b2c2c; }
+    </style>
+</head>
+<body>
+    <nav>
+        <strong>COSCUP Newsletter Admin</strong>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/subscribers">訂閱者</a>
+        <a href="/admin/newsletters">電子報</a>
+        <a href="/admin/templates">模板</a>
+        <a href="/admin/stats">統計</a>
+        <a href="/admin/admins">管理員</a>
+        <a href="/admin/audit-log">操作記錄</a>
+        <form method="POST" action="/admin/logout" style="margin-left:auto;">
+            <button type="submit" style="background:none;border:none;color:#d9534f;cursor:pointer;">登出 ({{ admin_email }})</button>
+        </form>
+    </nav>
+
+    <h1>{% if newsletter %}編輯電子報{% else %}建立電子報{% endif %}</h1>
+
+    {% if newsletter %}
+    <div class="status-info">
+        狀態：<span class="status-badge status-{{ newsletter.status }}">{{ newsletter.status }}</span>
+        <span id="progress">
+            {% if newsletter.status == "paused" and newsletter.total_count > 0 %}
+             — {{ newsletter.sent_count }}/{{ newsletter.total_count }} sent, {{ newsletter.failed_count }} failed
+            {% endif %}
+        </span>
+        {% if newsletter.status == "sending" or newsletter.status == "draft" %}
+        <script>
+            (function() {
+                var lastStatus = '{{ newsletter.status }}';
+                var timer = setInterval(function() {
+                    fetch('/admin/newsletters/{{ newsletter.id }}/status')
+                        .then(function(r) { return r.json(); })
+                        .then(function(d) {
+                            if (d.status === 'sending') {
+                                document.getElementById('progress').textContent =
+                                    ' — ' + d.sent_count + '/' + d.total_count + ' sent, ' + d.failed_count + ' failed';
+                            }
+                            if (d.status !== lastStatus) {
+                                location.reload();
+                            }
+                            if (d.status === 'sent' || d.status === 'failed') {
+                                clearInterval(timer);
+                                location.reload();
+                            }
+                        });
+                }, 2000);
+            })();
+        </script>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{% if newsletter %}/admin/newsletters/{{ newsletter.id }}{% else %}/admin/newsletters/new{% endif %}">
+        <div class="form-group">
+            <label for="title">標題</label>
+            <input type="text" id="title" name="title" value="{% if newsletter %}{{ newsletter.title }}{% endif %}" required
+                {% if newsletter and newsletter.status != "draft" %}disabled{% endif %}>
+        </div>
+        <div class="form-group">
+            <label for="template_id">模板</label>
+            <select id="template_id" name="template_id"
+                {% if newsletter and newsletter.status != "draft" %}disabled{% endif %}>
+                <option value="">預設模板</option>
+                {% for t in templates %}
+                <option value="{{ t.id }}" {% if newsletter and newsletter.template_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="markdown_content">內容（Markdown）</label>
+            <div style="font-size:12px;color:#718096;margin-bottom:6px;">可使用 <code style="background:#edf2f7;padding:1px 4px;border-radius:3px;">%recipient_name%</code> 插入訂閱者名稱</div>
+            <textarea id="markdown_content" name="markdown_content"
+                {% if newsletter and newsletter.status != "draft" %}disabled{% endif %}>{% if newsletter %}{{ newsletter.markdown_content }}{% endif %}</textarea>
+        </div>
+
+        <div class="actions">
+            {% if not newsletter or newsletter.status == "draft" %}
+            <button type="submit" class="btn btn-primary">儲存草稿</button>
+            {% endif %}
+
+            {% if newsletter and newsletter.status == "draft" %}
+            <a href="/admin/newsletters/{{ newsletter.id }}/preview" class="btn btn-secondary">預覽</a>
+            <button type="button" class="btn btn-primary" onclick="if(confirm('確定要立即發送？')) { document.getElementById('send-form').submit(); alert('電子報已開始發送！'); }">立即發送</button>
+            <button type="button" class="btn btn-warning" onclick="document.getElementById('schedule-section').style.display='block'">排程發送</button>
+            <button type="button" class="btn btn-danger" onclick="if(confirm('確定要刪除？')) { document.getElementById('delete-form').submit(); }">刪除</button>
+            {% endif %}
+
+            {% if newsletter and (newsletter.status == "scheduled" or newsletter.status == "sending") %}
+            <button type="button" class="btn btn-danger" onclick="document.getElementById('cancel-form').submit()">
+                {% if newsletter.status == "scheduled" %}取消排程{% else %}暫停發送{% endif %}
+            </button>
+            {% endif %}
+
+            {% if newsletter and newsletter.status == "paused" %}
+            <button type="button" class="btn btn-primary" onclick="if(confirm('確定要恢復發送？')) { document.getElementById('send-form').submit(); }">恢復發送</button>
+            <button type="button" class="btn btn-danger" onclick="if(confirm('確定要結束發送？未寄出的訂閱者將不會收到此電子報。')) { document.getElementById('cancel-form').submit(); }">結束發送</button>
+            {% endif %}
+
+            {% if newsletter and newsletter.status == "sent" %}
+            <a href="/admin/newsletters/{{ newsletter.id }}/stats" class="btn btn-secondary">查看統計</a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if newsletter and newsletter.status == "draft" %}
+    <!-- Schedule section (hidden by default) -->
+    <div id="schedule-section" style="display:none;margin-top:16px;padding:16px;background:#f7fafc;border-radius:4px;border:1px solid #e2e8f0;">
+        <form method="POST" action="/admin/newsletters/{{ newsletter.id }}/schedule">
+            <div class="form-group" style="margin-bottom:12px;">
+                <label for="scheduled_at" style="display:block;font-weight:bold;margin-bottom:6px;">排程時間（台灣時間 UTC+8）</label>
+                <input type="datetime-local" id="scheduled_at" name="scheduled_at" required
+                    style="width:100%;max-width:300px;padding:10px;border:1px solid #ccc;border-radius:4px;font-size:14px;box-sizing:border-box;">
+                <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;" id="quick-times">
+                    <button type="button" class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" data-offset="30">30 分鐘後</button>
+                    <button type="button" class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" data-offset="60">1 小時後</button>
+                    <button type="button" class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" data-offset="180">3 小時後</button>
+                    <button type="button" class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" data-offset="480">8 小時後</button>
+                    <button type="button" class="btn btn-secondary" style="padding:4px 10px;font-size:12px;" data-offset="1440">明天</button>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button type="submit" class="btn btn-warning">確認排程</button>
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('schedule-section').style.display='none'">取消</button>
+            </div>
+        </form>
+    </div>
+    <script>
+    (function() {
+        var pad = function(n) { return n < 10 ? '0' + n : n; };
+        var twOffset = 8 * 60 * 60 * 1000;
+        function toTwLocal(date) {
+            var tw = new Date(date.getTime() + date.getTimezoneOffset() * 60000 + twOffset);
+            return tw.getFullYear() + '-' + pad(tw.getMonth()+1) + '-' + pad(tw.getDate()) + 'T' + pad(tw.getHours()) + ':' + pad(tw.getMinutes());
+        }
+
+        var btn = document.querySelector('[onclick*="schedule-section"]');
+        if (btn) {
+            btn.onclick = function() {
+                var section = document.getElementById('schedule-section');
+                section.style.display = 'block';
+                var input = document.getElementById('scheduled_at');
+                if (!input.value) {
+                    input.value = toTwLocal(new Date(Date.now() + 3600000));
+                }
+                input.focus();
+            };
+        }
+
+        var quickBtns = document.querySelectorAll('#quick-times button[data-offset]');
+        quickBtns.forEach(function(b) {
+            b.addEventListener('click', function() {
+                var mins = parseInt(this.getAttribute('data-offset'), 10);
+                var input = document.getElementById('scheduled_at');
+                input.value = toTwLocal(new Date(Date.now() + mins * 60000));
+            });
+        });
+    })();
+    </script>
+
+    <!-- Hidden forms -->
+    <form id="send-form" method="POST" action="/admin/newsletters/{{ newsletter.id }}/send" style="display:none;"></form>
+    <form id="delete-form" method="POST" action="/admin/newsletters/{{ newsletter.id }}/delete" style="display:none;"></form>
+    {% endif %}
+
+    {% if newsletter and newsletter.status == "paused" %}
+    <form id="send-form" method="POST" action="/admin/newsletters/{{ newsletter.id }}/send" style="display:none;"></form>
+    <form id="cancel-form" method="POST" action="/admin/newsletters/{{ newsletter.id }}/cancel" style="display:none;"></form>
+    {% endif %}
+
+    {% if newsletter and (newsletter.status == "scheduled" or newsletter.status == "sending") %}
+    <form id="cancel-form" method="POST" action="/admin/newsletters/{{ newsletter.id }}/cancel" style="display:none;"></form>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
+    <script>
+    (function() {
+        var textarea = document.getElementById('markdown_content');
+        if (textarea && !textarea.disabled) {
+            var easyMDE = new EasyMDE({
+                element: textarea,
+                spellChecker: false,
+                minHeight: '400px',
+                toolbar: [
+                    "bold", "italic", "heading", "|",
+                    "quote", "unordered-list", "ordered-list", "|",
+                    "link", "upload-image", "table", "|",
+                    {
+                        name: "insert-name",
+                        action: function(editor) {
+                            var cm = editor.codemirror;
+                            cm.replaceSelection("%recipient_name%");
+                            cm.focus();
+                        },
+                        className: "fa fa-user",
+                        title: "插入訂閱者名稱"
+                    }, "|",
+                    "preview", "side-by-side", "fullscreen", "|",
+                    "guide"
+                ],
+                uploadImage: true,
+                imageMaxSize: 5 * 1024 * 1024,
+                imageUploadFunction: function(file, onSuccess, onError) {
+                    var formData = new FormData();
+                    formData.append('image', file);
+                    fetch('/admin/upload/image', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    })
+                    .then(function(res) {
+                        if (!res.ok) {
+                            return res.text().then(function(text) {
+                                return Promise.reject(text || 'Upload failed');
+                            });
+                        }
+                        return res.json();
+                    })
+                    .then(function(data) { onSuccess(data.url); })
+                    .catch(function(err) { onError(err); });
+                }
+            });
+        }
+    })();
+    </script>
+</body>
+</html>
