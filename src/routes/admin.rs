@@ -1,37 +1,17 @@
-use axum::extract::{Multipart, Path, Query, State};
-use axum::http::header;
+use std::net::SocketAddr;
+
+use axum::extract::{ConnectInfo, Multipart, Path, Query, State};
+use axum::http::{header, HeaderMap};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum_extra::extract::CookieJar;
 use chrono::Utc;
 use serde::Deserialize;
 
+use crate::auth::{AdminUser, SESSION_COOKIE};
 use crate::csv_handler::{self, ExportCsvRecord};
 use crate::error::AppError;
 use crate::security;
 use crate::AppState;
-
-const SESSION_COOKIE: &str = "admin_session";
-
-// --- Helper: session check ---
-
-async fn get_admin_email(state: &AppState, jar: &CookieJar) -> Result<String, AppError> {
-    let token = jar
-        .get(SESSION_COOKIE)
-        .map(|c| c.value().to_string())
-        .ok_or(AppError::Unauthorized)?;
-
-    let now = Utc::now();
-    let email = sqlx::query_scalar::<_, String>(
-        "SELECT admin_email FROM admin_sessions WHERE session_token = $1 AND expires_at > $2",
-    )
-    .bind(&token)
-    .bind(now)
-    .fetch_optional(&state.db)
-    .await?
-    .ok_or(AppError::Unauthorized)?;
-
-    Ok(email)
-}
 
 // --- Login ---
 
@@ -56,7 +36,12 @@ pub async fn login_submit(
     let mut ctx = tera::Context::new();
     ctx.insert("message", "如果此 Email 有管理權限，您將收到一封登入連結。");
 
-    if state.config.is_admin_email(&email) {
+    let is_admin: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM admins WHERE email = $1)")
+        .bind(&email)
+        .fetch_one(&state.db)
+        .await?;
+
+    if is_admin {
         let token = security::generate_token();
         let expires_at = Utc::now() + chrono::Duration::minutes(15);
 
@@ -70,8 +55,10 @@ pub async fn login_submit(
         .await?;
 
         let link = format!("{}/admin/auth/{}", state.config.base_url, token);
+        let logo_url = format!("{}/static/coscup-logo.svg", state.config.base_url);
         let mut email_ctx = tera::Context::new();
         email_ctx.insert("magic_link", &link);
+        email_ctx.insert("logo_url", &logo_url);
         let email_html = state.tera.render("emails/magic_link.html", &email_ctx)?;
 
         if let Err(e) = state
@@ -90,6 +77,8 @@ pub async fn login_submit(
 pub async fn auth_magic_link(
     State(state): State<AppState>,
     jar: CookieJar,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     Path(token): Path<String>,
 ) -> Result<(CookieJar, Redirect), AppError> {
     let now = Utc::now();
@@ -128,6 +117,16 @@ pub async fn auth_magic_link(
     .execute(&state.db)
     .await?;
 
+    let client_ip = super::extract_client_ip(&headers, &ConnectInfo(addr));
+    crate::audit::log(
+        &state.db,
+        &admin_email,
+        "admin.login",
+        None,
+        Some(client_ip),
+    )
+    .await;
+
     let cookie = axum_extra::extract::cookie::Cookie::build((SESSION_COOKIE, session_token))
         .path("/admin")
         .http_only(true)
@@ -141,10 +140,8 @@ pub async fn auth_magic_link(
 
 pub async fn dashboard(
     State(state): State<AppState>,
-    jar: CookieJar,
+    AdminUser(admin_email): AdminUser,
 ) -> Result<Html<String>, AppError> {
-    let admin_email = get_admin_email(&state, &jar).await?;
-
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM subscribers")
         .fetch_one(&state.db)
         .await?;
@@ -175,11 +172,9 @@ pub struct PaginationQuery {
 
 pub async fn subscribers_list(
     State(state): State<AppState>,
-    jar: CookieJar,
+    AdminUser(admin_email): AdminUser,
     Query(query): Query<PaginationQuery>,
 ) -> Result<Html<String>, AppError> {
-    let _admin_email = get_admin_email(&state, &jar).await?;
-
     let page = query.page.unwrap_or(1).max(1);
     let per_page: i64 = 50;
     let offset = (page - 1) * per_page;
@@ -244,6 +239,7 @@ pub async fn subscribers_list(
         .collect();
 
     let mut ctx = tera::Context::new();
+    ctx.insert("admin_email", &admin_email);
     ctx.insert("subscribers", &subscribers);
     ctx.insert("page", &page);
     ctx.insert("total_pages", &total_pages);
@@ -257,10 +253,11 @@ pub async fn subscribers_list(
 
 pub async fn toggle_status(
     State(state): State<AppState>,
-    jar: CookieJar,
+    AdminUser(admin_email): AdminUser,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Redirect, AppError> {
-    let _admin_email = get_admin_email(&state, &jar).await?;
     let now = Utc::now();
 
     sqlx::query("UPDATE subscribers SET status = NOT status, updated_at = $1 WHERE id = $2")
@@ -269,6 +266,16 @@ pub async fn toggle_status(
         .execute(&state.db)
         .await?;
 
+    let client_ip = super::extract_client_ip(&headers, &ConnectInfo(addr));
+    crate::audit::log(
+        &state.db,
+        &admin_email,
+        "subscriber.toggle",
+        Some(serde_json::json!({ "subscriber_id": id.to_string() })),
+        Some(client_ip),
+    )
+    .await;
+
     Ok(Redirect::to("/admin/subscribers"))
 }
 
@@ -276,11 +283,11 @@ pub async fn toggle_status(
 
 pub async fn resend_verification(
     State(state): State<AppState>,
-    jar: CookieJar,
+    AdminUser(admin_email): AdminUser,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Redirect, AppError> {
-    let _admin_email = get_admin_email(&state, &jar).await?;
-
     let row =
         sqlx::query_as::<_, (String, String)>("SELECT email, name FROM subscribers WHERE id = $1")
             .bind(id)
@@ -302,9 +309,11 @@ pub async fn resend_verification(
     .await?;
 
     let verify_url = format!("{}/verify/{}", state.config.base_url, token);
+    let logo_url = format!("{}/static/coscup-logo.svg", state.config.base_url);
     let mut email_ctx = tera::Context::new();
     email_ctx.insert("verify_url", &verify_url);
     email_ctx.insert("name", &name);
+    email_ctx.insert("logo_url", &logo_url);
     let email_html = state.tera.render("emails/verification.html", &email_ctx)?;
 
     if let Err(e) = state
@@ -315,6 +324,16 @@ pub async fn resend_verification(
         tracing::error!("Failed to send verification email: {e}");
     }
 
+    let client_ip = super::extract_client_ip(&headers, &ConnectInfo(addr));
+    crate::audit::log(
+        &state.db,
+        &admin_email,
+        "subscriber.resend",
+        Some(serde_json::json!({ "subscriber_id": id.to_string() })),
+        Some(client_ip),
+    )
+    .await;
+
     Ok(Redirect::to("/admin/subscribers"))
 }
 
@@ -322,11 +341,11 @@ pub async fn resend_verification(
 
 pub async fn import_csv(
     State(state): State<AppState>,
-    jar: CookieJar,
+    AdminUser(admin_email): AdminUser,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<Redirect, AppError> {
-    let _admin_email = get_admin_email(&state, &jar).await?;
-
     let mut csv_data = String::new();
     while let Some(field) = multipart
         .next_field()
@@ -373,17 +392,22 @@ pub async fn import_csv(
         }
     }
 
+    let client_ip = super::extract_client_ip(&headers, &ConnectInfo(addr));
+    crate::audit::log(
+        &state.db,
+        &admin_email,
+        "subscriber.import",
+        Some(serde_json::json!({ "count": records.len() })),
+        Some(client_ip),
+    )
+    .await;
+
     Ok(Redirect::to("/admin/subscribers"))
 }
 
 // --- CSV Export ---
 
-pub async fn export_csv(
-    State(state): State<AppState>,
-    jar: CookieJar,
-) -> Result<Response, AppError> {
-    let _admin_email = get_admin_email(&state, &jar).await?;
-
+pub async fn export_csv(State(state): State<AppState>) -> Result<Response, AppError> {
     let rows = sqlx::query_as::<_, (String, String, String, bool, String)>(
         "SELECT email, name, ucode, status, secret_code FROM subscribers ORDER BY created_at DESC",
     )
@@ -426,10 +450,45 @@ pub async fn export_csv(
 
 pub async fn stats_page(
     State(state): State<AppState>,
-    jar: CookieJar,
+    AdminUser(admin_email): AdminUser,
 ) -> Result<Html<String>, AppError> {
-    let _admin_email = get_admin_email(&state, &jar).await?;
+    // Per-newsletter aggregated stats
+    let newsletter_stats = sqlx::query_as::<_, (uuid::Uuid, String, String, i32, i32)>(
+        "SELECT id, title, slug, sent_count, total_count FROM newsletters \
+         WHERE status IN ('sent', 'sending') ORDER BY created_at DESC",
+    )
+    .fetch_all(&state.db)
+    .await?;
 
+    let mut stats_rows: Vec<serde_json::Value> = Vec::new();
+    for (id, title, slug, sent_count, _total_count) in &newsletter_stats {
+        let unique_opens: i64 = sqlx::query_scalar(
+            "SELECT COUNT(DISTINCT ucode) FROM email_events WHERE topic = $1 AND event_type = 'open'",
+        )
+        .bind(slug)
+        .fetch_one(&state.db)
+        .await?;
+
+        #[allow(clippy::cast_precision_loss)]
+        let open_rate = if *sent_count > 0 {
+            format!(
+                "{:.1}%",
+                (unique_opens as f64 / f64::from(*sent_count)) * 100.0
+            )
+        } else {
+            "—".to_string()
+        };
+
+        stats_rows.push(serde_json::json!({
+            "id": id.to_string(),
+            "title": title,
+            "sent_count": sent_count,
+            "unique_opens": unique_opens,
+            "open_rate": open_rate,
+        }));
+    }
+
+    // Legacy topic-based stats (for events not linked to a newsletter)
     let topic_stats = sqlx::query_as::<_, (String, String, i64)>(
         "SELECT topic, event_type, COUNT(*) as count FROM email_events \
          GROUP BY topic, event_type ORDER BY topic, event_type",
@@ -437,7 +496,7 @@ pub async fn stats_page(
     .fetch_all(&state.db)
     .await?;
 
-    let stat_rows: Vec<serde_json::Value> = topic_stats
+    let legacy_stats: Vec<serde_json::Value> = topic_stats
         .into_iter()
         .map(|(topic, event_type, count)| {
             serde_json::json!({
@@ -449,7 +508,9 @@ pub async fn stats_page(
         .collect();
 
     let mut ctx = tera::Context::new();
-    ctx.insert("stats", &stat_rows);
+    ctx.insert("admin_email", &admin_email);
+    ctx.insert("newsletter_stats", &stats_rows);
+    ctx.insert("stats", &legacy_stats);
     let html = state.tera.render("admin/stats.html", &ctx)?;
     Ok(Html(html))
 }
@@ -458,8 +519,21 @@ pub async fn stats_page(
 
 pub async fn logout(
     State(state): State<AppState>,
+    AdminUser(admin_email): AdminUser,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     jar: CookieJar,
 ) -> Result<(CookieJar, Redirect), AppError> {
+    let client_ip = super::extract_client_ip(&headers, &ConnectInfo(addr));
+    crate::audit::log(
+        &state.db,
+        &admin_email,
+        "admin.logout",
+        None,
+        Some(client_ip),
+    )
+    .await;
+
     if let Some(cookie) = jar.get(SESSION_COOKIE) {
         let _ = sqlx::query("DELETE FROM admin_sessions WHERE session_token = $1")
             .bind(cookie.value())
