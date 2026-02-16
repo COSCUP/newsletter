@@ -20,6 +20,9 @@ pub enum AppError {
 
     #[error("Internal error: {0}")]
     Internal(String),
+
+    #[error("Rate limit exceeded")]
+    RateLimitExceeded,
 }
 
 impl IntoResponse for AppError {
@@ -49,6 +52,10 @@ impl IntoResponse for AppError {
                     "Internal server error".to_string(),
                 )
             }
+            Self::RateLimitExceeded => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "請求過於頻繁，請稍後再試。".to_string(),
+            ),
         };
 
         (status, message).into_response()
@@ -81,5 +88,11 @@ mod tests {
     fn test_internal_error_hides_details() {
         let response = AppError::Internal("secret detail".to_string()).into_response();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
+    fn test_rate_limit_exceeded_status() {
+        let response = AppError::RateLimitExceeded.into_response();
+        assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 }
