@@ -15,6 +15,12 @@ pub struct AppConfig {
     pub smtp_password: Option<String>,
     pub smtp_tls: bool,
     pub smtp_from_email: String,
+    pub smtp_rate_limit_ms: u64,
+    pub newsletter_scheduler_interval_secs: u64,
+    pub yourls_api_url: Option<String>,
+    pub yourls_signature: Option<String>,
+    pub upload_dir: String,
+    pub max_upload_size_bytes: usize,
 }
 
 impl AppConfig {
@@ -50,6 +56,21 @@ impl AppConfig {
                 .unwrap_or(false),
             smtp_from_email: env::var("SMTP_FROM_EMAIL")
                 .unwrap_or_else(|_| "newsletter@coscup.org".to_string()),
+            smtp_rate_limit_ms: env::var("SMTP_RATE_LIMIT_MS")
+                .unwrap_or_else(|_| "100".to_string())
+                .parse()
+                .unwrap_or(100),
+            newsletter_scheduler_interval_secs: env::var("NEWSLETTER_SCHEDULER_INTERVAL_SECS")
+                .unwrap_or_else(|_| "30".to_string())
+                .parse()
+                .unwrap_or(30),
+            yourls_api_url: env::var("YOURLS_API_URL").ok().filter(|s| !s.is_empty()),
+            yourls_signature: env::var("YOURLS_SIGNATURE").ok().filter(|s| !s.is_empty()),
+            upload_dir: env::var("UPLOAD_DIR").unwrap_or_else(|_| "uploads".to_string()),
+            max_upload_size_bytes: env::var("MAX_UPLOAD_SIZE_BYTES")
+                .unwrap_or_else(|_| "5242880".to_string())
+                .parse()
+                .unwrap_or(5_242_880),
         })
     }
 
@@ -78,6 +99,12 @@ mod tests {
             smtp_password: None,
             smtp_tls: false,
             smtp_from_email: "test@example.com".to_string(),
+            smtp_rate_limit_ms: 100,
+            newsletter_scheduler_interval_secs: 30,
+            yourls_api_url: None,
+            yourls_signature: None,
+            upload_dir: "uploads".to_string(),
+            max_upload_size_bytes: 5_242_880,
         };
 
         assert!(config.is_admin_email("admin@coscup.org"));
