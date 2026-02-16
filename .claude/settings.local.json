@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cargo init:*)"
+      "Bash(cargo init:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo test:*)",
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nbuild: update dependencies and Docker configuration\n\nAdd comrak, regex, urlencoding, async-trait, uuid, axum multipart/json,\naxum-extra cookie, time, chrono, serde_json dependencies. Update Dockerfile\nto copy static assets. Add static/coscup-logo.svg.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

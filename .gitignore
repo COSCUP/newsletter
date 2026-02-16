@@ -20,5 +20,8 @@ example.csv
 .DS_Store
 Thumbs.db
 
+# Uploads
+uploads/
+
 # Docker
 docker-compose.override.yml
