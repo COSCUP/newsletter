@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title | default(value="錯誤") }} — COSCUP Newsletter{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align:center;">
+    <div style="font-size:48px;margin-bottom:12px;color:#d0d5dd;">{{ icon | default(value="🔗") }}</div>
+    <h2 style="margin-bottom:12px;">{{ title | default(value="頁面無法顯示") }}</h2>
+    <p style="color:#666;line-height:1.6;margin-bottom:24px;">{{ message | default(value="") }}</p>
+    {% if hint %}
+    <div class="info-block" style="text-align:left;">
+        <p>{{ hint }}</p>
+    </div>
+    {% endif %}
+    <a href="/" class="btn btn-primary">前往首頁</a>
+</div>
+{% endblock %}

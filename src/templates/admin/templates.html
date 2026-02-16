@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSCUP Newsletter Admin - 模板管理</title>
+    <style>
+        body { font-family: sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 20px; }
+        nav { display: flex; gap: 16px; margin-bottom: 20px; align-items: center; }
+        nav a { color: #3b9838; text-decoration: none; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f5f5f5; }
+        .btn { display: inline-block; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; text-decoration: none; font-size: 14px; }
+        .btn-primary { background: #3b9838; }
+        .btn-primary:hover { background: #338832; }
+        .btn-danger { background: #e53e3e; color: white; font-size: 12px; padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; }
+        .btn-danger:hover { background: #c53030; }
+        .actions a, .actions form { display: inline; }
+        .actions form { margin: 0; }
+    </style>
+</head>
+<body>
+    <nav>
+        <strong>COSCUP Newsletter Admin</strong>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/subscribers">訂閱者</a>
+        <a href="/admin/newsletters">電子報</a>
+        <a href="/admin/templates">模板</a>
+        <a href="/admin/stats">統計</a>
+        <a href="/admin/admins">管理員</a>
+        <a href="/admin/audit-log">操作記錄</a>
+        <form method="POST" action="/admin/logout" style="margin-left:auto;">
+            <button type="submit" style="background:none;border:none;color:#d9534f;cursor:pointer;">登出 ({{ admin_email }})</button>
+        </form>
+    </nav>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h1>模板管理</h1>
+        <a href="/admin/templates/new" class="btn btn-primary">建立模板</a>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>名稱</th>
+                <th>Slug</th>
+                <th>描述</th>
+                <th>建立時間</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in templates %}
+            <tr>
+                <td>{{ t.name }}</td>
+                <td><code>{{ t.slug }}</code></td>
+                <td>{{ t.description }}</td>
+                <td>{{ t.created_at }}</td>
+                <td class="actions">
+                    <a href="/admin/templates/{{ t.id }}">編輯</a>
+                    | <a href="/admin/templates/{{ t.id }}/preview">預覽</a>
+                    | <form method="POST" action="/admin/templates/{{ t.id }}/duplicate" style="display:inline;">
+                        <button type="submit" style="background:none;border:none;color:#3b9838;cursor:pointer;padding:0;font-size:inherit;">複製</button>
+                    </form>
+                    | <form method="POST" action="/admin/templates/{{ t.id }}/delete" style="display:inline;"
+                        onsubmit="return confirm('確定要刪除此模板？');">
+                        <button type="submit" class="btn-danger">刪除</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if templates | length == 0 %}
+            <tr>
+                <td colspan="5" style="text-align:center;color:#999;">尚無模板</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</body>
+</html>

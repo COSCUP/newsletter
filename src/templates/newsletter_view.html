@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}{{ subject }} — COSCUP Newsletter{% endblock %}
+
+{% block extra_head %}
+<style>
+    .newsletter-content img {
+        max-width: 100%;
+        height: auto;
+    }
+    .share-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        background: #f0f9f0;
+        border: 1px solid #c6e6c6;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 13px;
+        color: #2d6a2d;
+        flex-wrap: wrap;
+    }
+    .share-bar-text {
+        flex: 1;
+        min-width: 200px;
+    }
+    .share-bar-actions {
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    .btn-share {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border: 1px solid #d0d5dd;
+        border-radius: 6px;
+        background: #fff;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        color: #333;
+        transition: background 0.15s;
+    }
+    .btn-share:hover { background: #f7f7f7; }
+    .btn-share-primary {
+        background: #3b9838;
+        color: #fff;
+        border-color: #3b9838;
+    }
+    .btn-share-primary:hover { background: #338832; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="width:100%;max-width:680px;">
+    <div style="margin-bottom:16px;">
+        <a href="/newsletters" style="font-size:14px;">&larr; 回到電子報歷史</a>
+    </div>
+    <h2 style="font-size:22px;font-weight:700;color:#222;margin-bottom:16px;">{{ subject }}</h2>
+    <div class="share-bar">
+        <span class="share-bar-text">覺得這封電子報不錯嗎？分享給朋友吧！</span>
+        <div class="share-bar-actions">
+            <button class="btn-share btn-share-primary" id="btn-share" style="display:none;" title="分享">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                分享
+            </button>
+            <button class="btn-share" id="btn-copy" title="複製連結">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                複製連結
+            </button>
+        </div>
+    </div>
+    <div class="newsletter-content">
+        {{ rendered_html | safe }}
+    </div>
+</div>
+<script>
+(function() {
+    var shareUrl = window.location.href;
+    var shareTitle = {{ subject | json_encode() | safe }};
+
+    // Show native share button if supported
+    if (navigator.share) {
+        document.getElementById('btn-share').style.display = 'inline-flex';
+        document.getElementById('btn-share').addEventListener('click', function() {
+            navigator.share({ title: shareTitle, url: shareUrl });
+        });
+    }
+
+    // Copy to clipboard
+    document.getElementById('btn-copy').addEventListener('click', function() {
+        var btn = this;
+        navigator.clipboard.writeText(shareUrl).then(function() {
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> 已複製';
+            setTimeout(function() {
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 複製連結';
+            }, 2000);
+        });
+    });
+})();
+</script>
+{% endblock %}

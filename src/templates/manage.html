@@ -1,30 +1,16 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COSCUP Newsletter - 管理訂閱</title>
-    <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
-        .info { margin: 20px 0; padding: 16px; background: #f5f5f5; border-radius: 4px; }
-        form { margin: 12px 0; }
-        input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; }
-        .btn-update { background: #4a90d9; }
-        .btn-unsub { background: #d9534f; }
-        .message { padding: 12px; background: #e8f5e9; border-radius: 4px; margin: 12px 0; }
-        .status-active { color: #4caf50; }
-        .status-inactive { color: #f44336; }
-    </style>
-</head>
-<body>
-    <h1>管理訂閱</h1>
+{% extends "base.html" %}
+
+{% block title %}COSCUP Newsletter - 管理訂閱{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>管理訂閱</h2>
     {% if message %}
-    <div class="message">{{ message }}</div>
+    <div class="alert alert-success">{{ message }}</div>
     {% endif %}
-    <div class="info">
-        <p><strong>Email:</strong> {{ email }}</p>
-        <p><strong>狀態:</strong>
+    <div class="info-block">
+        <p><strong>Email：</strong> {{ email }}</p>
+        <p><strong>狀態：</strong>
             {% if status %}
             <span class="status-active">已訂閱</span>
             {% else %}
@@ -32,16 +18,22 @@
             {% endif %}
         </p>
     </div>
-    <h2>更新名稱</h2>
-    <form method="POST" action="/manage/{{ admin_link }}/update">
-        <input type="text" name="name" value="{{ name }}" required>
-        <button type="submit" class="btn-update">更新</button>
+    <h3 style="font-size:16px;margin-bottom:12px;">更新名稱</h3>
+    <form method="POST" action="/manage/{{ admin_link }}/update" style="display:flex;gap:8px;margin-bottom:24px;">
+        <input type="text" name="name" value="{{ name }}" required class="form-group" style="flex:1;padding:10px 14px;border:1px solid #d0d5dd;border-radius:8px;font-size:15px;font-family:inherit;">
+        <button type="submit" class="btn btn-primary">更新</button>
     </form>
     {% if status %}
-    <h2>取消訂閱</h2>
+    <h3 style="font-size:16px;margin-bottom:12px;">取消訂閱</h3>
     <form method="POST" action="/manage/{{ admin_link }}/unsubscribe">
-        <button type="submit" class="btn-unsub">取消訂閱</button>
+        {% if from_newsletter %}<input type="hidden" name="from" value="{{ from_newsletter }}">{% endif %}
+        <button type="submit" class="btn btn-danger" style="width:100%;">取消訂閱</button>
+    </form>
+    {% else %}
+    <h3 style="font-size:16px;margin-bottom:12px;">重新訂閱</h3>
+    <form method="POST" action="/manage/{{ admin_link }}/resubscribe">
+        <button type="submit" class="btn btn-primary" style="width:100%;">重新訂閱</button>
     </form>
     {% endif %}
-</body>
-</html>
+</div>
+{% endblock %}

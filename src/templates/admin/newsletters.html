@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSCUP Newsletter Admin - 電子報</title>
+    <style>
+        body { font-family: sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 20px; }
+        nav { display: flex; gap: 16px; margin-bottom: 20px; align-items: center; }
+        nav a { color: #3b9838; text-decoration: none; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f5f5f5; }
+        .btn { display: inline-block; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; text-decoration: none; font-size: 14px; }
+        .btn-primary { background: #3b9838; }
+        .btn-primary:hover { background: #338832; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-draft { background: #e2e8f0; color: #4a5568; }
+        .status-scheduled { background: #bee3f8; color: #2b6cb0; }
+        .status-sending { background: #fefcbf; color: #975a16; }
+        .status-sent { background: #c6f6d5; color: #276749; }
+        .status-paused { background: #fed7d7; color: #9b2c2c; }
+        .status-failed { background: #fed7d7; color: #9b2c2c; }
+    </style>
+</head>
+<body>
+    <nav>
+        <strong>COSCUP Newsletter Admin</strong>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/subscribers">訂閱者</a>
+        <a href="/admin/newsletters">電子報</a>
+        <a href="/admin/templates">模板</a>
+        <a href="/admin/stats">統計</a>
+        <a href="/admin/admins">管理員</a>
+        <a href="/admin/audit-log">操作記錄</a>
+        <form method="POST" action="/admin/logout" style="margin-left:auto;">
+            <button type="submit" style="background:none;border:none;color:#d9534f;cursor:pointer;">登出 ({{ admin_email }})</button>
+        </form>
+    </nav>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h1>電子報管理</h1>
+        <a href="/admin/newsletters/new" class="btn btn-primary">建立電子報</a>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>標題</th>
+                <th>狀態</th>
+                <th>發送</th>
+                <th>建立時間</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for n in newsletters %}
+            <tr>
+                <td>{{ n.title }}</td>
+                <td>
+                    <span class="status-badge status-{{ n.status }}">{{ n.status }}</span>
+                </td>
+                <td>{{ n.sent_count }} / {{ n.total_count }}</td>
+                <td>{{ n.created_at }}</td>
+                <td>
+                    <a href="/admin/newsletters/{{ n.id }}">編輯</a>
+                    {% if n.status == "sent" or n.status == "sending" %}
+                    | <a href="/admin/newsletters/{{ n.id }}/stats">統計</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if newsletters | length == 0 %}
+            <tr>
+                <td colspan="5" style="text-align:center;color:#999;">尚無電子報</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</body>
+</html>

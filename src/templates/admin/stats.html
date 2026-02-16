@@ -6,11 +6,12 @@
     <title>COSCUP Newsletter Admin - 統計</title>
     <style>
         body { font-family: sans-serif; max-width: 900px; margin: 20px auto; padding: 0 20px; }
-        nav { display: flex; gap: 16px; margin-bottom: 20px; }
-        nav a { color: #4a90d9; text-decoration: none; }
+        nav { display: flex; gap: 16px; margin-bottom: 20px; align-items: center; }
+        nav a { color: #3b9838; text-decoration: none; }
         table { width: 100%; border-collapse: collapse; margin: 16px 0; }
         th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
         th { background: #f5f5f5; }
+        h2 { margin-top: 32px; }
     </style>
 </head>
 <body>
@@ -18,9 +19,48 @@
         <strong>COSCUP Newsletter Admin</strong>
         <a href="/admin">Dashboard</a>
         <a href="/admin/subscribers">訂閱者</a>
+        <a href="/admin/newsletters">電子報</a>
+        <a href="/admin/templates">模板</a>
         <a href="/admin/stats">統計</a>
+        <a href="/admin/admins">管理員</a>
+        <a href="/admin/audit-log">操作記錄</a>
+        <form method="POST" action="/admin/logout" style="margin-left:auto;">
+            <button type="submit" style="background:none;border:none;color:#d9534f;cursor:pointer;">登出 ({{ admin_email }})</button>
+        </form>
     </nav>
-    <h1>追蹤統計</h1>
+
+    <h1>統計總覽</h1>
+
+    <h2>電子報統計</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>電子報</th>
+                <th>發送數</th>
+                <th>不重複開信</th>
+                <th>開信率</th>
+                <th>詳情</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for n in newsletter_stats %}
+            <tr>
+                <td>{{ n.title }}</td>
+                <td>{{ n.sent_count }}</td>
+                <td>{{ n.unique_opens }}</td>
+                <td>{{ n.open_rate }}</td>
+                <td><a href="/admin/newsletters/{{ n.id }}/stats">查看</a></td>
+            </tr>
+            {% endfor %}
+            {% if newsletter_stats | length == 0 %}
+            <tr>
+                <td colspan="5" style="text-align:center;color:#999;">尚無已發送的電子報</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <h2>追蹤事件明細</h2>
     <table>
         <thead>
             <tr>
