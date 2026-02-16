@@ -91,11 +91,12 @@ pub async fn track_click(
                 .to_string();
 
             let _ = sqlx::query(
-                "INSERT INTO email_events (ucode, event_type, topic, user_agent) VALUES ($1, 'click', $2, $3)",
+                "INSERT INTO email_events (ucode, event_type, topic, user_agent, clicked_url) VALUES ($1, 'click', $2, $3, $4)",
             )
             .bind(&query.ucode)
             .bind(&query.topic)
             .bind(&user_agent)
+            .bind(redirect_url)
             .execute(&state.db)
             .await;
         }
