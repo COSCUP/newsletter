@@ -27,7 +27,7 @@ path = "scripts/migrate_legacy.rs"
 # Web
 axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "fs"] }
 tower = "0.5"
 
 # Template
@@ -45,6 +45,11 @@ hex = "0.4"
 
 # Email (SMTP)
 lettre = { version = "0.11", features = ["tokio1-native-tls", "builder", "hostname"] }
+
+# Markdown / HTML processing
+comrak = "0.35"
+regex = "1"
+urlencoding = "2"
 
 # Misc
 serde = { version = "1", features = ["derive"] }

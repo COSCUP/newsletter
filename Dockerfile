@@ -20,6 +20,7 @@ WORKDIR /app
 COPY --from=builder /app/target/release/coscup-newsletter /app/coscup-newsletter
 COPY src/templates/ /app/src/templates/
 COPY migrations/ /app/migrations/
+COPY static/ /app/static/
 
 EXPOSE 8080
 
