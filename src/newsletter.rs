@@ -4,9 +4,9 @@ use crate::security;
 use crate::shorturl::ShortUrlService;
 use crate::AppState;
 
-/// Convert Markdown to HTML using comrak, with inline styles on `<img>` tags
-/// so images display properly in both previews and email clients.
-pub fn render_markdown(md: &str) -> String {
+/// Convert Markdown to HTML using comrak, absolutize relative image srcs,
+/// and add inline styles on `<img>` tags so images display properly in email clients.
+pub fn render_markdown(md: &str, base_url: &str) -> String {
     use comrak::{markdown_to_html, Options};
     let mut options = Options::default();
     options.extension.strikethrough = true;
@@ -14,7 +14,8 @@ pub fn render_markdown(md: &str) -> String {
     options.extension.autolink = true;
     options.render.unsafe_ = true;
     let html = markdown_to_html(md, &options);
-    style_images_for_email(&html)
+    let html = style_images_for_email(&html);
+    absolutize_image_srcs(&html, base_url)
 }
 
 /// Rewrite relative `src` attributes (e.g. `/uploads/...`) to absolute URLs
@@ -204,10 +205,9 @@ pub async fn send_newsletter(
         .map_err(|e| e.to_string())?,
     };
 
-    // Render markdown → HTML, sanitize, then absolutize relative image paths for email clients
-    let content_html = render_markdown(&markdown_content);
+    // Render markdown → HTML (includes image src absolutization), then sanitize
+    let content_html = render_markdown(&markdown_content, &state.config.base_url);
     let content_html = sanitize_html(&content_html);
-    let content_html = absolutize_image_srcs(&content_html, &state.config.base_url);
 
     // Update rendered_html
     sqlx::query("UPDATE newsletters SET rendered_html = $1, updated_at = NOW() WHERE id = $2")
@@ -523,14 +523,14 @@ mod tests {
 
     #[test]
     fn test_render_markdown_basic() {
-        let html = render_markdown("# Hello\n\nWorld");
+        let html = render_markdown("# Hello\n\nWorld", "");
         assert!(html.contains("<h1>Hello</h1>"));
         assert!(html.contains("<p>World</p>"));
     }
 
     #[test]
     fn test_render_markdown_links() {
-        let html = render_markdown("[COSCUP](https://coscup.org)");
+        let html = render_markdown("[COSCUP](https://coscup.org)", "");
         assert!(html.contains("href=\"https://coscup.org\""));
         assert!(html.contains("COSCUP"));
     }
@@ -538,13 +538,13 @@ mod tests {
     #[test]
     fn test_render_markdown_table() {
         let md = "| A | B |\n|---|---|\n| 1 | 2 |";
-        let html = render_markdown(md);
+        let html = render_markdown(md, "");
         assert!(html.contains("<table>"));
     }
 
     #[test]
     fn test_render_markdown_strikethrough() {
-        let html = render_markdown("~~deleted~~");
+        let html = render_markdown("~~deleted~~", "");
         assert!(html.contains("<del>deleted</del>"));
     }
 
