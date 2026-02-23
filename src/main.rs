@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Redirect};
 use axum::routing::{get, post};
 use axum::Router;
 use tower_http::services::ServeDir;
@@ -44,6 +44,7 @@ fn build_router(state: AppState) -> Router {
     let public_routes = Router::new()
         .route("/health", get(health))
         .route("/", get(routes::subscribe::subscribe_page))
+        .route("/subscribe/coscup", get(|| async { Redirect::to("/") }))
         .route("/api/subscribe", post(routes::subscribe::subscribe_api))
         .route("/verify/{token}", get(routes::subscribe::verify_email))
         .route("/manage/{admin_link}", get(routes::manage::manage_page))
