@@ -29,9 +29,36 @@ pub struct LoginForm {
 
 pub async fn login_submit(
     State(state): State<AppState>,
+    connect_info: ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     axum::Form(form): axum::Form<LoginForm>,
 ) -> Result<Html<String>, AppError> {
     let email = form.email.trim().to_lowercase();
+    let client_ip = super::extract_client_ip(&headers, &connect_info);
+    let ip_str = client_ip.to_string();
+
+    // Rate limiting: same limits as subscribe (email: 5/24h, IP: 10/24h)
+    let email_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_login_log WHERE email = $1 AND created_at > NOW() - INTERVAL '24 hours'",
+    )
+    .bind(&email)
+    .fetch_one(&state.db)
+    .await?;
+
+    if email_count >= 5 {
+        return Err(AppError::RateLimitExceeded);
+    }
+
+    let ip_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM admin_login_log WHERE ip_address = $1::inet AND created_at > NOW() - INTERVAL '24 hours'",
+    )
+    .bind(&ip_str)
+    .fetch_one(&state.db)
+    .await?;
+
+    if ip_count >= 10 {
+        return Err(AppError::RateLimitExceeded);
+    }
 
     // Always show success to prevent email enumeration
     let mut ctx = tera::Context::new();
@@ -40,6 +67,13 @@ pub async fn login_submit(
     let is_admin: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM admins WHERE email = $1)")
         .bind(&email)
         .fetch_one(&state.db)
+        .await?;
+
+    // Log unconditionally (before checking is_admin) so rate limit applies to all attempts
+    sqlx::query("INSERT INTO admin_login_log (email, ip_address) VALUES ($1, $2::inet)")
+        .bind(&email)
+        .bind(&ip_str)
+        .execute(&state.db)
         .await?;
 
     if is_admin {
