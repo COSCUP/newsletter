@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    image: ghcr.io/coscup/newsletter:latest
     ports:
       - "8080:8080"
     env_file: .env
