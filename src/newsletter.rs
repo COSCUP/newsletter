@@ -204,8 +204,9 @@ pub async fn send_newsletter(
         .map_err(|e| e.to_string())?,
     };
 
-    // Render markdown → HTML, then absolutize relative image paths for email clients
+    // Render markdown → HTML, sanitize, then absolutize relative image paths for email clients
     let content_html = render_markdown(&markdown_content);
+    let content_html = sanitize_html(&content_html);
     let content_html = absolutize_image_srcs(&content_html, &state.config.base_url);
 
     // Update rendered_html
