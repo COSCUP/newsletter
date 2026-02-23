@@ -41,8 +41,13 @@ fn style_images_for_email(html: &str) -> String {
 
 /// Sanitize HTML for public web display: strip `<script>`, event handlers,
 /// and other dangerous elements while preserving formatting tags.
+/// The `style` attribute on `<img>` is explicitly allowed so that
+/// email-client layout styles (max-width, height:auto, display:block) survive.
 pub fn sanitize_html(html: &str) -> String {
-    ammonia::clean(html)
+    ammonia::Builder::default()
+        .add_tag_attributes("img", &["style"])
+        .clean(html)
+        .to_string()
 }
 
 /// Replace `%recipient_name%` placeholder with the subscriber's name.
@@ -605,6 +610,13 @@ mod tests {
         assert!(!result.contains("onload"));
         assert!(!result.contains("onclick"));
         assert!(result.contains("https://coscup.org"));
+    }
+
+    #[test]
+    fn test_sanitize_html_preserves_img_style() {
+        let html = r#"<img src="https://example.com/img.png" style="max-width:100%;height:auto;display:block;">"#;
+        let result = sanitize_html(html);
+        assert!(result.contains(r#"style="max-width:100%;height:auto;display:block;""#));
     }
 
     #[test]
