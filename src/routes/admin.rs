@@ -90,7 +90,7 @@ pub async fn login_submit(
         .await?;
 
         let link = format!("{}/admin/auth/{}", state.config.base_url, token);
-        let logo_url = format!("{}/static/coscup-logo.svg", state.config.base_url);
+        let logo_url = format!("{}/static/coscup-logo.png", state.config.base_url);
         let mut email_ctx = tera::Context::new();
         email_ctx.insert("magic_link", &link);
         email_ctx.insert("logo_url", &logo_url);
@@ -347,7 +347,7 @@ pub async fn resend_verification(
     .await?;
 
     let verify_url = format!("{}/verify/{}", state.config.base_url, token);
-    let logo_url = format!("{}/static/coscup-logo.svg", state.config.base_url);
+    let logo_url = format!("{}/static/coscup-logo.png", state.config.base_url);
     let mut email_ctx = tera::Context::new();
     email_ctx.insert("verify_url", &verify_url);
     email_ctx.insert("name", &name);
