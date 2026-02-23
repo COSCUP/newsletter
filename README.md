@@ -18,7 +18,7 @@ COSCUP 電子報訂閱管理系統，提供訂閱、Email 驗證（Double Opt-in
 
 ### 前置需求
 
-- Rust 1.83+
+- Rust 1.93+
 - PostgreSQL
 - SMTP 服務（如 AWS SES SMTP、Mailgun、自建 SMTP 等）
 - Cloudflare Turnstile 帳號
