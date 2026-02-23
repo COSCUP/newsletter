@@ -1,14 +1,23 @@
-FROM rust:1.93-slim AS builder
-
+FROM rust:1.93-slim AS chef
+RUN cargo install cargo-chef --locked
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+FROM chef AS planner
+COPY Cargo.toml Cargo.lock* ./
+COPY src/ src/
+COPY scripts/ scripts/
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
+COPY --from=planner /app/recipe.json recipe.json
+# 只有 Cargo.lock 變動時才重新編譯依賴
+RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY Cargo.toml Cargo.lock* ./
 COPY src/ src/
 COPY scripts/ scripts/
 COPY migrations/ migrations/
-
 RUN cargo build --release --bin coscup-newsletter
 
 FROM debian:bookworm-slim
