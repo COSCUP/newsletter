@@ -86,7 +86,6 @@
             <label for="template_id">模板</label>
             <select id="template_id" name="template_id"
                 {% if newsletter and newsletter.status != "draft" %}disabled{% endif %}>
-                <option value="">預設模板</option>
                 {% for t in templates %}
                 <option value="{{ t.id }}" {% if newsletter and newsletter.template_id == t.id %}selected{% endif %}>{{ t.name }}</option>
                 {% endfor %}
