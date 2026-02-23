@@ -34,7 +34,7 @@ tower = "0.5"
 tera = "1"
 
 # DB
-sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono", "tls-rustls"] }
 
 # Security
 sha2 = "0.10"
