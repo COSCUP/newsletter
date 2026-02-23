@@ -147,6 +147,18 @@
         }
         .footer a { color: #3b9838; text-decoration: none; }
         .footer a:hover { text-decoration: underline; }
+        .beta-banner {
+            background: #fffbeb;
+            border-bottom: 1px solid #f6d860;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #7c5c00;
+            line-height: 1.6;
+        }
+        .beta-banner strong {
+            color: #5a4000;
+        }
         @media (max-width: 560px) {
             .card { padding: 24px 20px; }
         }
@@ -162,6 +174,9 @@
             <h1><a href="/">Newsletter</a></h1>
         </div>
     </header>
+    <div class="beta-banner">
+        <strong>&#x1F6A7; 限時公測中</strong>｜本系統目前處於公測階段，預計於 <strong>3 月 2 日</strong>匯入舊系統訂閱資料並正式上線。<strong>公測期間訂閱的資料將不會保留</strong>，正式上線後請重新訂閱。
+    </div>
     <main class="main">
         {% block content %}{% endblock %}
     </main>
