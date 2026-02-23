@@ -255,21 +255,44 @@ pub async fn preview(
 
     let (name, html_body) = row;
 
-    // Render with sample data
-    let sample_content = "<h2>Sample Content</h2><p>This is a preview of the template with sample content. <a href=\"https://coscup.org\">COSCUP</a></p>";
+    // Use a realistic Markdown sample so the preview goes through the same
+    // render_markdown pipeline as actual newsletters.
+    let sample_markdown = "\
+## COSCUP 2025 活動公告
+
+感謝您訂閱 COSCUP 電子報！以下是本期精彩內容：
+
+### 活動亮點
+
+- 超過 **100 場**議程，涵蓋 Open Source 各領域
+- 活動日期：**8 月 9 日 ~ 10 日**
+- 地點：[台灣科技大學](https://coscup.org)
+
+### 特別活動
+
+本年度特別新增「親子工作坊」，歡迎帶孩子一起參與開源文化！
+
+---
+
+[立即報名](https://coscup.org) | [查看議程](https://coscup.org)\
+";
+    let content_html = newsletter::render_markdown(sample_markdown, &state.config.base_url);
     let tracking_pixel = "<!-- tracking pixel placeholder -->";
-    let unsubscribe_url = "#";
+    let unsubscribe_url = "#unsubscribe";
 
     let rendered = newsletter::personalize_email(
         &html_body,
-        sample_content,
-        "Sample Newsletter Title",
+        &content_html,
+        "COSCUP 2025 電子報 - 第一期",
         tracking_pixel,
         unsubscribe_url,
         &state.config.base_url,
-        "#",
+        "#web-version",
     )
     .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    // Replace recipient name placeholder as the actual send pipeline does.
+    let rendered = newsletter::replace_recipient_name(&rendered, "COSCUP 訂閱者");
 
     let mut ctx = tera::Context::new();
     ctx.insert("admin_email", &admin_email);
