@@ -34,11 +34,12 @@ pub fn compute_admin_link(secret_code: &str, email: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
-/// Compute openhash = HMAC-SHA256(secret_code, "ucode:topic").
-pub fn compute_openhash(secret_code: &str, ucode: &str, topic: &str) -> String {
+/// Compute openhash = HMAC-SHA256(secret_code, "ucode:topic:url").
+/// For open-tracking (no URL), pass `url = ""`.
+pub fn compute_openhash(secret_code: &str, ucode: &str, topic: &str, url: &str) -> String {
     let mut mac =
         HmacSha256::new_from_slice(secret_code.as_bytes()).expect("HMAC accepts any key length");
-    let message = format!("{ucode}:{topic}");
+    let message = format!("{ucode}:{topic}:{url}");
     mac.update(message.as_bytes());
     hex::encode(mac.finalize().into_bytes())
 }
@@ -54,8 +55,15 @@ pub fn verify_admin_link(provided: &str, expected: &str) -> bool {
 }
 
 /// Verify openhash using constant-time comparison.
-pub fn verify_openhash(secret_code: &str, ucode: &str, topic: &str, provided: &str) -> bool {
-    let expected = compute_openhash(secret_code, ucode, topic);
+/// For open-tracking (no URL), pass `url = ""`.
+pub fn verify_openhash(
+    secret_code: &str,
+    ucode: &str,
+    topic: &str,
+    url: &str,
+    provided: &str,
+) -> bool {
+    let expected = compute_openhash(secret_code, ucode, topic, url);
     verify_admin_link(provided, &expected)
 }
 
@@ -116,27 +124,77 @@ mod tests {
 
     #[test]
     fn test_compute_openhash_deterministic() {
-        let h1 = compute_openhash("secret", "abc123", "newsletter-01");
-        let h2 = compute_openhash("secret", "abc123", "newsletter-01");
+        let h1 = compute_openhash("secret", "abc123", "newsletter-01", "");
+        let h2 = compute_openhash("secret", "abc123", "newsletter-01", "");
         assert_eq!(h1, h2);
     }
 
     #[test]
+    fn test_compute_openhash_url_changes_hash() {
+        let h1 = compute_openhash("secret", "abc123", "newsletter-01", "");
+        let h2 = compute_openhash("secret", "abc123", "newsletter-01", "https://coscup.org");
+        assert_ne!(h1, h2);
+    }
+
+    #[test]
     fn test_verify_openhash_correct() {
-        let hash = compute_openhash("secret", "abc123", "newsletter-01");
-        assert!(verify_openhash("secret", "abc123", "newsletter-01", &hash));
+        let hash = compute_openhash("secret", "abc123", "newsletter-01", "");
+        assert!(verify_openhash(
+            "secret",
+            "abc123",
+            "newsletter-01",
+            "",
+            &hash
+        ));
+    }
+
+    #[test]
+    fn test_verify_openhash_correct_with_url() {
+        let url = "https://coscup.org/2025";
+        let hash = compute_openhash("secret", "abc123", "newsletter-01", url);
+        assert!(verify_openhash(
+            "secret",
+            "abc123",
+            "newsletter-01",
+            url,
+            &hash
+        ));
+    }
+
+    #[test]
+    fn test_verify_openhash_wrong_url() {
+        let hash = compute_openhash("secret", "abc123", "newsletter-01", "https://coscup.org");
+        assert!(!verify_openhash(
+            "secret",
+            "abc123",
+            "newsletter-01",
+            "https://evil.com",
+            &hash
+        ));
     }
 
     #[test]
     fn test_verify_openhash_wrong_topic() {
-        let hash = compute_openhash("secret", "abc123", "newsletter-01");
-        assert!(!verify_openhash("secret", "abc123", "newsletter-02", &hash));
+        let hash = compute_openhash("secret", "abc123", "newsletter-01", "");
+        assert!(!verify_openhash(
+            "secret",
+            "abc123",
+            "newsletter-02",
+            "",
+            &hash
+        ));
     }
 
     #[test]
     fn test_verify_openhash_wrong_secret() {
-        let hash = compute_openhash("secret", "abc123", "newsletter-01");
-        assert!(!verify_openhash("wrong", "abc123", "newsletter-01", &hash));
+        let hash = compute_openhash("secret", "abc123", "newsletter-01", "");
+        assert!(!verify_openhash(
+            "wrong",
+            "abc123",
+            "newsletter-01",
+            "",
+            &hash
+        ));
     }
 
     #[test]

@@ -119,23 +119,25 @@ pub fn personalize_email(
 
 /// Rewrite all http/https links in HTML to go through `/r/c` click tracking.
 /// Each link becomes `/r/c?ucode=...&topic=...&hash=...&url=<original>`.
-/// This is per-subscriber (each subscriber gets their own openhash).
+/// The hash is HMAC-SHA256 over (ucode, topic, url), so the URL is tamper-proof.
+/// This is per-subscriber (each subscriber gets their own hash per link).
 pub fn rewrite_links_for_tracking(
     html: &str,
     base_url: &str,
     ucode: &str,
     topic: &str,
-    openhash: &str,
+    secret_code: &str,
 ) -> String {
     let re = Regex::new(r#"href="(https?://[^"]+)""#).expect("valid regex");
     re.replace_all(html, |caps: &regex::Captures| {
         let original_url = &caps[1];
+        let hash = security::compute_openhash(secret_code, ucode, topic, original_url);
         let tracking_url = format!(
             "{}/r/c?ucode={}&topic={}&hash={}&url={}",
             base_url,
             urlencoding::encode(ucode),
             urlencoding::encode(topic),
-            urlencoding::encode(openhash),
+            urlencoding::encode(&hash),
             urlencoding::encode(original_url),
         );
         format!("href=\"{tracking_url}\"")
@@ -292,17 +294,17 @@ pub async fn send_newsletter(
             continue;
         }
 
-        // Compute per-subscriber tracking
-        let openhash = security::compute_openhash(secret_code, ucode, &slug);
+        // Compute per-subscriber open-tracking pixel hash (no URL)
+        let openhash = security::compute_openhash(secret_code, ucode, &slug, "");
         let tracking_pixel = build_tracking_pixel(&state.config.base_url, ucode, &slug, &openhash);
 
-        // Rewrite links for per-subscriber click tracking
+        // Rewrite links for per-subscriber click tracking (each link gets its own HMAC)
         let tracked_html = rewrite_links_for_tracking(
             &shortened_html,
             &state.config.base_url,
             ucode,
             &slug,
-            &openhash,
+            secret_code,
         );
         let tracked_html = replace_recipient_name(&tracked_html, name);
 
@@ -717,26 +719,39 @@ mod tests {
 
     #[test]
     fn test_rewrite_links_for_tracking() {
-        let html = r#"<a href="https://coscup.org">COSCUP</a> and <a href="https://example.com/page">Example</a>"#;
+        let secret = "mysecret";
+        let ucode = "abc123";
+        let topic = "nl-01";
+        let url1 = "https://coscup.org";
+        let url2 = "https://example.com/page";
+
+        let html = format!(r#"<a href="{url1}">COSCUP</a> and <a href="{url2}">Example</a>"#);
         let result = rewrite_links_for_tracking(
-            html,
+            &html,
             "https://newsletter.coscup.org",
-            "abc123",
-            "nl-01",
-            "myhash",
+            ucode,
+            topic,
+            secret,
         );
+
         assert!(result.contains("/r/c?"));
         assert!(result.contains("ucode=abc123"));
         assert!(result.contains("topic=nl-01"));
-        assert!(result.contains("hash=myhash"));
         assert!(result.contains("url=https%3A%2F%2Fcoscup.org"));
         assert!(result.contains("url=https%3A%2F%2Fexample.com%2Fpage"));
+
+        // Each link has its own per-URL hash
+        let hash1 = security::compute_openhash(secret, ucode, topic, url1);
+        let hash2 = security::compute_openhash(secret, ucode, topic, url2);
+        assert_ne!(hash1, hash2);
+        assert!(result.contains(&urlencoding::encode(&hash1).to_string()));
+        assert!(result.contains(&urlencoding::encode(&hash2).to_string()));
     }
 
     #[test]
     fn test_rewrite_links_skips_non_http() {
         let html = r##"<a href="mailto:hi@coscup.org">Mail</a> <a href="#top">Top</a>"##;
-        let result = rewrite_links_for_tracking(html, "https://x.com", "u", "t", "h");
+        let result = rewrite_links_for_tracking(html, "https://x.com", "u", "t", "secret");
         // Non-http links should be unchanged
         assert!(result.contains("mailto:hi@coscup.org"));
         assert!(result.contains("#top"));
