@@ -303,8 +303,7 @@ pub async fn preview(
         }
     };
 
-    let content_html = newsletter::render_markdown(&markdown_content);
-    let content_html = newsletter::absolutize_image_srcs(&content_html, &state.config.base_url);
+    let content_html = newsletter::render_markdown(&markdown_content, &state.config.base_url);
     let content_html = newsletter::replace_recipient_name(&content_html, "王小明");
 
     // Use dummy values for preview
