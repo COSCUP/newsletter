@@ -167,7 +167,7 @@ pub async fn auth_magic_link(
         .path("/admin")
         .http_only(true)
         .secure(is_https)
-        .same_site(SameSite::Strict)
+        .same_site(SameSite::Lax)
         .max_age(time::Duration::hours(24))
         .build();
 
