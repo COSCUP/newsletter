@@ -57,10 +57,12 @@ pub async fn view(
 
     let (title, markdown_content, template_id) = row;
 
-    // Render markdown to HTML
+    // Render markdown to HTML, then sanitize for public web display
+    // (strips <script>, event handlers, and other dangerous elements)
     let content_html = newsletter::render_markdown(&markdown_content);
     let content_html = newsletter::absolutize_image_srcs(&content_html, &state.config.base_url);
     let content_html = newsletter::replace_recipient_name(&content_html, "訂閱者");
+    let content_html = newsletter::sanitize_html(&content_html);
 
     // Load template
     let template_html = if let Some(tid) = template_id {

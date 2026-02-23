@@ -38,6 +38,12 @@ fn style_images_for_email(html: &str) -> String {
     .into_owned()
 }
 
+/// Sanitize HTML for public web display: strip `<script>`, event handlers,
+/// and other dangerous elements while preserving formatting tags.
+pub fn sanitize_html(html: &str) -> String {
+    ammonia::clean(html)
+}
+
 /// Replace `%recipient_name%` placeholder with the subscriber's name.
 pub fn replace_recipient_name(html: &str, name: &str) -> String {
     html.replace("%recipient_name%", name)
@@ -579,6 +585,35 @@ mod tests {
         let html = r#"<p>text</p><img src="a.png"><p>more</p><img src="b.png">"#;
         let result = style_images_for_email(html);
         assert_eq!(result.matches("max-width:100%").count(), 2);
+    }
+
+    #[test]
+    fn test_sanitize_html_strips_script() {
+        let html = r#"<p>Hello</p><script>alert('xss')</script><p>World</p>"#;
+        let result = sanitize_html(html);
+        assert!(!result.contains("<script>"));
+        assert!(!result.contains("alert"));
+        assert!(result.contains("<p>Hello</p>"));
+        assert!(result.contains("<p>World</p>"));
+    }
+
+    #[test]
+    fn test_sanitize_html_strips_event_handlers() {
+        let html = r#"<img src="x.png" onload="alert(1)"><a href="https://coscup.org" onclick="evil()">Link</a>"#;
+        let result = sanitize_html(html);
+        assert!(!result.contains("onload"));
+        assert!(!result.contains("onclick"));
+        assert!(result.contains("https://coscup.org"));
+    }
+
+    #[test]
+    fn test_sanitize_html_preserves_formatting() {
+        let html = r#"<h1>Title</h1><p><strong>Bold</strong> and <em>italic</em></p><ul><li>Item</li></ul>"#;
+        let result = sanitize_html(html);
+        assert!(result.contains("<h1>Title</h1>"));
+        assert!(result.contains("<strong>Bold</strong>"));
+        assert!(result.contains("<em>italic</em>"));
+        assert!(result.contains("<li>Item</li>"));
     }
 
     #[test]

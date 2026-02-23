@@ -65,6 +65,7 @@ axum-extra = { version = "0.10", features = ["cookie"] }
 async-trait = "0.1"
 serde_json = "1.0.149"
 time = "0.3.47"
+ammonia = "4.1.2"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
