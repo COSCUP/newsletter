@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use axum::extract::{ConnectInfo, Multipart, Path, Query, State};
 use axum::http::{header, HeaderMap};
 use axum::response::{Html, IntoResponse, Redirect, Response};
+use axum_extra::extract::cookie::SameSite;
 use axum_extra::extract::CookieJar;
 use chrono::Utc;
 use serde::Deserialize;
@@ -127,9 +128,12 @@ pub async fn auth_magic_link(
     )
     .await;
 
+    let is_https = state.config.base_url.starts_with("https://");
     let cookie = axum_extra::extract::cookie::Cookie::build((SESSION_COOKIE, session_token))
         .path("/admin")
         .http_only(true)
+        .secure(is_https)
+        .same_site(SameSite::Strict)
         .max_age(time::Duration::hours(24))
         .build();
 
@@ -418,7 +422,7 @@ pub async fn export_csv(State(state): State<AppState>) -> Result<Response, AppEr
         .into_iter()
         .map(|(email, name, ucode, status, secret_code)| {
             let admin_link = security::compute_admin_link(&secret_code, &email);
-            let openhash = security::compute_openhash(&secret_code, &ucode, "");
+            let openhash = security::compute_openhash(&secret_code, &ucode, "", "");
             ExportCsvRecord {
                 email,
                 name,

@@ -38,7 +38,7 @@ pub async fn track_open(
             .await?;
 
     if let Some((secret_code,)) = subscriber {
-        if security::verify_openhash(&secret_code, &query.ucode, &query.topic, &query.hash) {
+        if security::verify_openhash(&secret_code, &query.ucode, &query.topic, "", &query.hash) {
             let user_agent = headers
                 .get(header::USER_AGENT)
                 .and_then(|v| v.to_str().ok())
@@ -75,6 +75,11 @@ pub async fn track_click(
         .as_deref()
         .ok_or_else(|| AppError::BadRequest("Missing url parameter".to_string()))?;
 
+    // Validate redirect URL to prevent open redirect attacks
+    if !redirect_url.starts_with("https://") && !redirect_url.starts_with("http://") {
+        return Err(AppError::BadRequest("Invalid redirect URL".to_string()));
+    }
+
     // Verify openhash
     let subscriber =
         sqlx::query_as::<_, (String,)>("SELECT secret_code FROM subscribers WHERE ucode = $1")
@@ -83,7 +88,13 @@ pub async fn track_click(
             .await?;
 
     if let Some((secret_code,)) = subscriber {
-        if security::verify_openhash(&secret_code, &query.ucode, &query.topic, &query.hash) {
+        if security::verify_openhash(
+            &secret_code,
+            &query.ucode,
+            &query.topic,
+            redirect_url,
+            &query.hash,
+        ) {
             let user_agent = headers
                 .get(header::USER_AGENT)
                 .and_then(|v| v.to_str().ok())
