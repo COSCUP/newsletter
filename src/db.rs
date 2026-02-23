@@ -42,6 +42,9 @@ pub async fn run_migrations(pool: &PgPool) -> Result<(), sqlx::Error> {
     let migration_011 = include_str!("../migrations/011_audit_log.sql");
     sqlx::raw_sql(migration_011).execute(pool).await?;
 
+    let migration_012 = include_str!("../migrations/012_admin_login_log.sql");
+    sqlx::raw_sql(migration_012).execute(pool).await?;
+
     Ok(())
 }
 
