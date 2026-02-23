@@ -7,7 +7,7 @@
     <style>
         body { font-family: sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 20px; }
         nav { display: flex; gap: 16px; margin-bottom: 20px; align-items: center; }
-        nav a { color: #4a90d9; text-decoration: none; }
+        nav a { color: #3b9838; text-decoration: none; }
         table { width: 100%; border-collapse: collapse; margin: 16px 0; }
         th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
         th { background: #f5f5f5; }
@@ -20,19 +20,7 @@
     </style>
 </head>
 <body>
-    <nav>
-        <strong>COSCUP Newsletter Admin</strong>
-        <a href="/admin">Dashboard</a>
-        <a href="/admin/subscribers">訂閱者</a>
-        <a href="/admin/newsletters">電子報</a>
-        <a href="/admin/templates">模板</a>
-        <a href="/admin/stats">統計</a>
-        <a href="/admin/admins">管理員</a>
-        <a href="/admin/audit-log">操作記錄</a>
-        <form method="POST" action="/admin/logout" style="margin-left:auto;">
-            <button type="submit" style="background:none;border:none;color:#d9534f;cursor:pointer;">登出 ({{ admin_email }})</button>
-        </form>
-    </nav>
+    {% include "admin/_nav.html" %}
 
     <h1>操作記錄</h1>
 
