@@ -98,7 +98,7 @@ pub async fn subscribe_api(
             let admin_link = security::compute_admin_link(&secret_code, &subscriber_email);
             let manage_url = format!("{}/manage/{}", state.config.base_url, admin_link);
 
-            let logo_url = format!("{}/static/coscup-logo.svg", state.config.base_url);
+            let logo_url = format!("{}/static/coscup-logo.png", state.config.base_url);
             let mut email_ctx = tera::Context::new();
             email_ctx.insert("manage_url", &manage_url);
             email_ctx.insert("logo_url", &logo_url);
@@ -168,7 +168,7 @@ pub async fn subscribe_api(
 
     // Send verification email
     let verify_url = format!("{}/verify/{}", state.config.base_url, token);
-    let logo_url = format!("{}/static/coscup-logo.svg", state.config.base_url);
+    let logo_url = format!("{}/static/coscup-logo.png", state.config.base_url);
     let mut email_ctx = tera::Context::new();
     email_ctx.insert("verify_url", &verify_url);
     email_ctx.insert("name", &name);
