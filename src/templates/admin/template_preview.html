@@ -17,19 +17,7 @@
     </style>
 </head>
 <body>
-    <nav>
-        <strong>COSCUP Newsletter Admin</strong>
-        <a href="/admin">Dashboard</a>
-        <a href="/admin/subscribers">訂閱者</a>
-        <a href="/admin/newsletters">電子報</a>
-        <a href="/admin/templates">模板</a>
-        <a href="/admin/stats">統計</a>
-        <a href="/admin/admins">管理員</a>
-        <a href="/admin/audit-log">操作記錄</a>
-        <form method="POST" action="/admin/logout" style="margin-left:auto;">
-            <button type="submit" style="background:none;border:none;color:#d9534f;cursor:pointer;">登出 ({{ admin_email }})</button>
-        </form>
-    </nav>
+    {% include "admin/_nav.html" %}
 
     <h1>模板預覽：{{ name }}</h1>
 
