@@ -443,7 +443,10 @@ pub async fn import_csv(
 
 // --- CSV Export ---
 
-pub async fn export_csv(State(state): State<AppState>) -> Result<Response, AppError> {
+pub async fn export_csv(
+    AdminUser(_admin_email): AdminUser,
+    State(state): State<AppState>,
+) -> Result<Response, AppError> {
     let rows = sqlx::query_as::<_, (String, String, String, bool, String)>(
         "SELECT email, name, ucode, status, secret_code FROM subscribers ORDER BY created_at DESC",
     )

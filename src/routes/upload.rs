@@ -1,6 +1,7 @@
 use axum::extract::{Multipart, State};
 use axum::response::Json;
 
+use crate::auth::AdminUser;
 use crate::error::AppError;
 use crate::AppState;
 
@@ -24,6 +25,7 @@ fn extension_from_content_type(ct: &str) -> Option<&'static str> {
 }
 
 pub async fn upload_image(
+    AdminUser(_admin_email): AdminUser,
     State(state): State<AppState>,
     mut multipart: Multipart,
 ) -> Result<Json<serde_json::Value>, AppError> {

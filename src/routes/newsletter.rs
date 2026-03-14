@@ -496,6 +496,7 @@ pub async fn cancel(
 // --- Status (JSON for polling) ---
 
 pub async fn status_json(
+    AdminUser(_admin_email): AdminUser,
     State(state): State<AppState>,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<impl IntoResponse, AppError> {
