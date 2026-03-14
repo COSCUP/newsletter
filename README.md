@@ -148,11 +148,12 @@ PostgreSQL 需由外部提供，透過 `DATABASE_URL` 連線。
 ### 透過 CLI 匯入
 
 ```bash
-# 先行驗證（不寫入資料庫）
+# 先行驗證（預覽匯入內容）
 cargo run --bin migrate-legacy -- --csv example.csv --dry-run
 
-# 產生 SQL 語句
-cargo run --bin migrate-legacy -- --csv example.csv --database-url $DATABASE_URL
+# 產生 SQL 語句並匯入資料庫
+cargo run --bin migrate-legacy -- --csv example.csv > import.sql
+psql $DATABASE_URL -f import.sql
 ```
 
 CSV 格式需符合舊系統匯出格式：
