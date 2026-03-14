@@ -224,8 +224,19 @@ pub async fn subscribers_list(
         .map(|s| format!("%{s}%"));
 
     let (rows, total): (Vec<_>, i64) = if let Some(ref pattern) = search_pattern {
-        let rows = sqlx::query_as::<_, (uuid::Uuid, String, String, bool, bool, String)>(
-            "SELECT id, email, name, status, verified_email, ucode FROM subscribers \
+        let rows = sqlx::query_as::<
+            _,
+            (
+                uuid::Uuid,
+                String,
+                String,
+                bool,
+                bool,
+                String,
+                Option<chrono::DateTime<chrono::Utc>>,
+            ),
+        >(
+            "SELECT id, email, name, status, verified_email, ucode, bounced_at FROM subscribers \
              WHERE email ILIKE $1 OR name ILIKE $1 \
              ORDER BY created_at DESC LIMIT $2 OFFSET $3",
         )
@@ -244,8 +255,19 @@ pub async fn subscribers_list(
 
         (rows, total)
     } else {
-        let rows = sqlx::query_as::<_, (uuid::Uuid, String, String, bool, bool, String)>(
-            "SELECT id, email, name, status, verified_email, ucode FROM subscribers \
+        let rows = sqlx::query_as::<
+            _,
+            (
+                uuid::Uuid,
+                String,
+                String,
+                bool,
+                bool,
+                String,
+                Option<chrono::DateTime<chrono::Utc>>,
+            ),
+        >(
+            "SELECT id, email, name, status, verified_email, ucode, bounced_at FROM subscribers \
              ORDER BY created_at DESC LIMIT $1 OFFSET $2",
         )
         .bind(per_page)
@@ -264,16 +286,19 @@ pub async fn subscribers_list(
 
     let subscribers: Vec<serde_json::Value> = rows
         .into_iter()
-        .map(|(id, email, name, status, verified_email, ucode)| {
-            serde_json::json!({
-                "id": id.to_string(),
-                "email": mask_email(&email),
-                "name": mask_name(&name),
-                "status": status,
-                "verified_email": verified_email,
-                "ucode": ucode,
-            })
-        })
+        .map(
+            |(id, email, name, status, verified_email, ucode, bounced_at)| {
+                serde_json::json!({
+                    "id": id.to_string(),
+                    "email": mask_email(&email),
+                    "name": mask_name(&name),
+                    "status": status,
+                    "verified_email": verified_email,
+                    "ucode": ucode,
+                    "bounced_at": bounced_at.map(|t| t.format("%Y-%m-%d %H:%M").to_string()),
+                })
+            },
+        )
         .collect();
 
     let mut ctx = tera::Context::new();

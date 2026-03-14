@@ -42,6 +42,7 @@
                 <th>名稱</th>
                 <th>狀態</th>
                 <th>已驗證</th>
+                <th>退信</th>
                 <th>Ucode</th>
                 <th>操作</th>
             </tr>
@@ -53,6 +54,7 @@
                 <td>{{ s.name }}</td>
                 <td>{% if s.status %}有效{% else %}停用{% endif %}</td>
                 <td>{% if s.verified_email %}是{% else %}否{% endif %}</td>
+                <td>{% if s.bounced_at %}{{ s.bounced_at }}{% else %}-{% endif %}</td>
                 <td>{{ s.ucode }}</td>
                 <td class="actions">
                     <form method="POST" action="/admin/subscribers/{{ s.id }}/toggle">
