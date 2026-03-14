@@ -61,59 +61,104 @@ fn main() {
         }
     };
 
-    let mut reader = csv::Reader::from_reader(csv_data.as_bytes());
+    let records = parse_import_csv(&csv_data);
     let mut count = 0;
     let mut errors = 0;
 
-    for result in reader.records() {
-        match result {
-            Ok(record) => {
-                let _email = record.get(2).unwrap_or("").trim();
-                let name = record.get(1).unwrap_or("").trim();
-                let clean_mail = record.get(3).unwrap_or("").trim();
-                let status = record.get(4).unwrap_or("0");
-                let verified_email = record.get(5).unwrap_or("0");
-                let admin_link = record.get(6).unwrap_or("").trim();
-                let ucode = record.get(7).unwrap_or("").trim();
-
-                if clean_mail.is_empty() {
-                    eprintln!("Skipping record with empty email");
-                    errors += 1;
-                    continue;
-                }
-
-                if dry_run {
-                    println!(
-                        "[DRY RUN] Would import: email={clean_mail}, name={name}, ucode={ucode}, status={status}, legacy_admin_link={admin_link}"
-                    );
-                } else {
-                    println!("Importing: email={clean_mail}, name={name}, ucode={ucode}");
-                    // In a real implementation, we'd use sqlx here.
-                    // This binary is a simplified CLI that would need tokio runtime for DB access.
-                    // For now, output SQL statements that can be piped to psql.
-                    let secret_code = generate_hex(32);
-                    let status_bool = status == "1";
-                    let verified_bool = verified_email == "1";
-                    println!(
-                        "INSERT INTO subscribers (email, name, secret_code, ucode, legacy_admin_link, status, verified_email, subscription_source) \
-                         VALUES ('{clean_mail}', '{}', '{secret_code}', '{ucode}', '{admin_link}', {status_bool}, {verified_bool}, 'legacy') \
-                         ON CONFLICT (email) DO NOTHING;",
-                        name.replace('\'', "''")
-                    );
-                }
-                count += 1;
-            }
-            Err(e) => {
-                eprintln!("Error parsing record: {e}");
-                errors += 1;
-            }
+    for record in &records {
+        if record.email.is_empty() {
+            eprintln!("Skipping record with empty email");
+            errors += 1;
+            continue;
         }
+
+        if dry_run {
+            println!(
+                "[DRY RUN] Would import: email={}, name={}, ucode={}, status={}, legacy_admin_link={}",
+                record.email, record.name, record.ucode, record.status, record.legacy_admin_link
+            );
+        } else {
+            println!(
+                "Importing: email={}, name={}, ucode={}",
+                record.email, record.name, record.ucode
+            );
+            let secret_code = generate_hex(32);
+            println!(
+                "INSERT INTO subscribers (email, name, secret_code, ucode, legacy_admin_link, status, verified_email, subscription_source) \
+                 VALUES ('{}', '{}', '{secret_code}', '{}', '{}', {}, {}, 'legacy') \
+                 ON CONFLICT (email) DO NOTHING;",
+                record.email,
+                record.name.replace('\'', "''"),
+                record.ucode,
+                record.legacy_admin_link,
+                record.status,
+                record.verified_email,
+            );
+        }
+        count += 1;
     }
 
     println!("\nProcessed: {count}, Errors: {errors}");
     if dry_run {
         println!("(Dry run - no changes made)");
     }
+}
+
+struct ImportRecord {
+    email: String,
+    name: String,
+    ucode: String,
+    status: bool,
+    verified_email: bool,
+    legacy_admin_link: String,
+}
+
+fn parse_import_csv(data: &str) -> Vec<ImportRecord> {
+    let first_line = data.lines().next().unwrap_or("");
+    let headers: Vec<&str> = first_line.split(',').map(str::trim).collect();
+
+    let mut reader = csv::Reader::from_reader(data.as_bytes());
+    let mut records = Vec::new();
+
+    if headers.contains(&"uid") && headers.contains(&"created_at") {
+        // V2 format: uid,mail,name,created_at
+        for result in reader.records() {
+            match result {
+                Ok(row) => {
+                    records.push(ImportRecord {
+                        email: row.get(1).unwrap_or("").trim().to_string(),
+                        name: row.get(2).unwrap_or("").trim().to_string(),
+                        ucode: row.get(0).unwrap_or("").trim().to_string(),
+                        status: true,
+                        verified_email: true,
+                        legacy_admin_link: String::new(),
+                    });
+                }
+                Err(e) => eprintln!("Error parsing record: {e}"),
+            }
+        }
+    } else if headers.contains(&"_id") && headers.contains(&"clean_mail") {
+        // V1 format: _id,name,mail,clean_mail,status,verified_email,admin_link,ucode,...
+        for result in reader.records() {
+            match result {
+                Ok(row) => {
+                    records.push(ImportRecord {
+                        email: row.get(3).unwrap_or("").trim().to_string(),
+                        name: row.get(1).unwrap_or("").trim().to_string(),
+                        ucode: row.get(7).unwrap_or("").trim().to_string(),
+                        status: row.get(4).unwrap_or("0") == "1",
+                        verified_email: row.get(5).unwrap_or("0") == "1",
+                        legacy_admin_link: row.get(6).unwrap_or("").trim().to_string(),
+                    });
+                }
+                Err(e) => eprintln!("Error parsing record: {e}"),
+            }
+        }
+    } else {
+        eprintln!("Unrecognized CSV format: expected headers with '_id,clean_mail' (v1) or 'uid,created_at' (v2)");
+    }
+
+    records
 }
 
 fn generate_hex(bytes: usize) -> String {

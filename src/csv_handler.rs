@@ -19,6 +19,26 @@ pub struct LegacyCsvRecord {
     pub openhash: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct LegacyV2CsvRecord {
+    pub uid: String,
+    pub mail: String,
+    pub name: String,
+    pub created_at: String,
+}
+
+/// Normalized import record from any legacy CSV format.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ImportRecord {
+    pub email: String,
+    pub name: String,
+    pub ucode: String,
+    pub status: bool,
+    pub verified_email: bool,
+    pub legacy_admin_link: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct ExportCsvRecord {
     pub email: String,
@@ -32,6 +52,51 @@ pub struct ExportCsvRecord {
 pub fn parse_legacy_csv(data: &str) -> Result<Vec<LegacyCsvRecord>, csv::Error> {
     let mut reader = csv::Reader::from_reader(data.as_bytes());
     reader.deserialize().collect()
+}
+
+fn parse_legacy_v2_csv(data: &str) -> Result<Vec<LegacyV2CsvRecord>, csv::Error> {
+    let mut reader = csv::Reader::from_reader(data.as_bytes());
+    reader.deserialize().collect()
+}
+
+/// Auto-detect CSV format by headers and parse into unified `ImportRecord`s.
+pub fn parse_import_csv(data: &str) -> Result<Vec<ImportRecord>, csv::Error> {
+    let first_line = data.lines().next().unwrap_or("");
+    let headers: Vec<&str> = first_line.split(',').map(str::trim).collect();
+
+    if headers.contains(&"uid") && headers.contains(&"created_at") {
+        // V2 format: uid,mail,name,created_at
+        let records = parse_legacy_v2_csv(data)?;
+        Ok(records
+            .into_iter()
+            .map(|r| ImportRecord {
+                email: r.mail,
+                name: r.name,
+                ucode: r.uid,
+                status: true,
+                verified_email: true,
+                legacy_admin_link: String::new(),
+            })
+            .collect())
+    } else if headers.contains(&"_id") && headers.contains(&"clean_mail") {
+        // V1 format: _id,name,mail,clean_mail,status,verified_email,admin_link,ucode,...
+        let records = parse_legacy_csv(data)?;
+        Ok(records
+            .into_iter()
+            .map(|r| ImportRecord {
+                email: r.clean_mail,
+                name: r.name,
+                ucode: r.ucode,
+                status: r.status == "1",
+                verified_email: r.verified_email == "1",
+                legacy_admin_link: r.admin_link,
+            })
+            .collect())
+    } else {
+        Err(csv::Error::from(std::io::Error::other(
+            "Unrecognized CSV format: expected headers with '_id,clean_mail' (v1) or 'uid,created_at' (v2)",
+        )))
+    }
 }
 
 pub fn write_export_csv(records: &[ExportCsvRecord]) -> Result<String, csv::Error> {
@@ -70,6 +135,50 @@ mod tests {
             "_id,name,mail,clean_mail,status,verified_email,admin_link,ucode,args,openhash\n";
         let records = parse_legacy_csv(csv_data).unwrap();
         assert_eq!(records.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_import_csv_v1() {
+        let csv_data = "_id,name,mail,clean_mail,status,verified_email,admin_link,ucode,args,openhash\nyoyo930021@gmail.com,yoyo930021,yoyo930021@gmail.com,yoyo930021@gmail.com,1,0,a8c11d7b,b3514a49,t=eos,7c489799";
+        let records = parse_import_csv(csv_data).unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(
+            records[0],
+            ImportRecord {
+                email: "yoyo930021@gmail.com".to_string(),
+                name: "yoyo930021".to_string(),
+                ucode: "b3514a49".to_string(),
+                status: true,
+                verified_email: false,
+                legacy_admin_link: "a8c11d7b".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_import_csv_v2() {
+        let csv_data =
+            "uid,mail,name,created_at\nb3514a49,yoyo930021@gmail.com,yoyo930021,1613500741";
+        let records = parse_import_csv(csv_data).unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(
+            records[0],
+            ImportRecord {
+                email: "yoyo930021@gmail.com".to_string(),
+                name: "yoyo930021".to_string(),
+                ucode: "b3514a49".to_string(),
+                status: true,
+                verified_email: true,
+                legacy_admin_link: String::new(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_import_csv_unknown_format() {
+        let csv_data = "foo,bar,baz\n1,2,3";
+        let result = parse_import_csv(csv_data);
+        assert!(result.is_err());
     }
 
     #[test]

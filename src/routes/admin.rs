@@ -267,8 +267,8 @@ pub async fn subscribers_list(
         .map(|(id, email, name, status, verified_email, ucode)| {
             serde_json::json!({
                 "id": id.to_string(),
-                "email": email,
-                "name": name,
+                "email": mask_email(&email),
+                "name": mask_name(&name),
                 "status": status,
                 "verified_email": verified_email,
                 "ucode": ucode,
@@ -402,31 +402,29 @@ pub async fn import_csv(
         return Err(AppError::BadRequest("No CSV data provided".to_string()));
     }
 
-    let records = csv_handler::parse_legacy_csv(&csv_data)
+    let records = csv_handler::parse_import_csv(&csv_data)
         .map_err(|e| AppError::BadRequest(e.to_string()))?;
 
     for record in &records {
         let secret_code = security::generate_secret_code();
-        let status = record.status == "1";
-        let verified_email = record.verified_email == "1";
 
         let result = sqlx::query(
             "INSERT INTO subscribers (email, name, secret_code, ucode, legacy_admin_link, status, verified_email, subscription_source) \
              VALUES ($1, $2, $3, $4, $5, $6, $7, 'import') \
              ON CONFLICT (email) DO NOTHING",
         )
-        .bind(&record.clean_mail)
+        .bind(&record.email)
         .bind(&record.name)
         .bind(&secret_code)
         .bind(&record.ucode)
-        .bind(&record.admin_link)
-        .bind(status)
-        .bind(verified_email)
+        .bind(&record.legacy_admin_link)
+        .bind(record.status)
+        .bind(record.verified_email)
         .execute(&state.db)
         .await;
 
         if let Err(e) = result {
-            tracing::warn!("Failed to import record {}: {e}", record.clean_mail);
+            tracing::warn!("Failed to import record {}: {e}", record.email);
         }
     }
 
@@ -585,4 +583,32 @@ pub async fn logout(
         .build();
 
     Ok((jar.remove(removal), Redirect::to("/admin/login")))
+}
+
+/// Mask a string: show first 2 and last 2 chars, replace middle with `****`.
+/// For strings with 4 or fewer chars, show first char and mask the rest.
+fn mask_str(s: &str) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    let len = chars.len();
+    if len <= 1 {
+        return "*".to_string();
+    }
+    if len <= 4 {
+        let first: String = chars[..1].iter().collect();
+        return format!("{first}{}", "*".repeat(len - 1));
+    }
+    let first: String = chars[..2].iter().collect();
+    let last: String = chars[len - 2..].iter().collect();
+    format!("{first}****{last}")
+}
+
+fn mask_email(email: &str) -> String {
+    match email.split_once('@') {
+        Some((local, domain)) => format!("{}@{domain}", mask_str(local)),
+        None => mask_str(email),
+    }
+}
+
+fn mask_name(name: &str) -> String {
+    mask_str(name)
 }
